@@ -518,11 +518,18 @@ export default function SocialAccounts() {
             toast.error('Không thể khởi tạo kết nối Instagram.');
         }
     };
-
     const connectThreads = async () => {
-        setShowThreadsModal(true);
+        try {
+            const res = await api.get('/social/auth/threads');
+            const { url } = res.data;
+            const w = 600, h = 700;
+            const left = window.screenX + (window.outerWidth - w) / 2;
+            const top = window.screenY + (window.outerHeight - h) / 2;
+            window.open(url, 'threads_oauth', `width=${w},height=${h},left=${left},top=${top},popup=yes`);
+        } catch {
+            toast.error('Không thể khởi tạo kết nối Threads.');
+        }
     };
-
     const submitThreadsToken = async () => {
         if (!threadsForm.accessToken.trim()) {
             toast.error('Vui lòng nhập Access Token.');

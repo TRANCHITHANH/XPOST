@@ -1573,7 +1573,7 @@ public class SocialAuthController : ControllerBase
         // NOTE: Chỉ request các scope đã được phê duyệt trên TikTok Developer Portal.
         // Sandbox app có thể dùng video.publish nhưng bài đăng sẽ ở chế độ private (chỉ mình tôi).
         // Sau khi app được audit, có thể thêm: comment.list,comment.list.manage
-        var scopes = "user.info.basic,video.upload";
+        var scopes = "user.info.basic,video.publish,video.upload,video.list";
         var redirectUri = Uri.EscapeDataString(_tiktokSettings.RedirectUri);
 
         var url = "https://www.tiktok.com/v2/auth/authorize/"
