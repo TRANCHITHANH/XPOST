@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  XPost.Domain -> d:\Dropbox\XPost\src\XPost.Domain\bin\Debug\net10.0\XPost.Domain.dll
+d:\Dropbox\XPost\src\XPost.Application\Posts\Queries\GetPostById\GetPostByIdQuery.cs(34,23): warning CS8601: Possible null reference assignment. [d:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+d:\Dropbox\XPost\src\XPost.Application\SocialAccounts\Queries\GetActiveSocialAccounts\GetActiveSocialAccountsQuery.cs(24,69): error CS1061: 'IRepository<SocialAccount>' does not contain a definition for 'GetQueryable' and no accessible extension method 'GetQueryable' accepting a first argument of type 'IRepository<SocialAccount>' could be found (are you missing a using directive or an assembly reference?) [d:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+
+Build FAILED.
+
+d:\Dropbox\XPost\src\XPost.Application\Posts\Queries\GetPostById\GetPostByIdQuery.cs(34,23): warning CS8601: Possible null reference assignment. [d:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+d:\Dropbox\XPost\src\XPost.Application\SocialAccounts\Queries\GetActiveSocialAccounts\GetActiveSocialAccountsQuery.cs(24,69): error CS1061: 'IRepository<SocialAccount>' does not contain a definition for 'GetQueryable' and no accessible extension method 'GetQueryable' accepting a first argument of type 'IRepository<SocialAccount>' could be found (are you missing a using directive or an assembly reference?) [d:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+    1 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.21

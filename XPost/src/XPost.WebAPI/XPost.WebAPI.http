@@ -1,0 +1,6 @@
+@XPost.WebAPI_HostAddress = http://localhost:5243
+
+GET {{XPost.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

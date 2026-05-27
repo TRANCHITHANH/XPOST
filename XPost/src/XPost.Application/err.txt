@@ -1,0 +1,18 @@
+﻿  Determining projects to restore...
+D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj : warning NU1903: Package 'AutoMapper' 16.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+  All projects are up-to-date for restore.
+D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj : warning NU1903: Package 'AutoMapper' 16.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+  XPost.Domain -> D:\Dropbox\XPost\src\XPost.Domain\bin\Debug\net10.0\XPost.Domain.dll
+D:\Dropbox\XPost\src\XPost.Application\Categories\Commands\SyncCategories\SyncCategoriesCommand.cs(18,22): error CS0246: The type or namespace name 'IHttpClientFactory' could not be found (are you missing a using directive or an assembly reference?) [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Categories\Commands\SyncCategories\SyncCategoriesCommand.cs(20,65): error CS0246: The type or namespace name 'IHttpClientFactory' could not be found (are you missing a using directive or an assembly reference?) [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+
+Build FAILED.
+
+D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj : warning NU1903: Package 'AutoMapper' 16.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj : warning NU1903: Package 'AutoMapper' 16.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+D:\Dropbox\XPost\src\XPost.Application\Categories\Commands\SyncCategories\SyncCategoriesCommand.cs(18,22): error CS0246: The type or namespace name 'IHttpClientFactory' could not be found (are you missing a using directive or an assembly reference?) [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Categories\Commands\SyncCategories\SyncCategoriesCommand.cs(20,65): error CS0246: The type or namespace name 'IHttpClientFactory' could not be found (are you missing a using directive or an assembly reference?) [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+    2 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:01.17

@@ -1,0 +1,24 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  XPost.Domain -> D:\Dropbox\XPost\src\XPost.Domain\bin\Debug\net10.0\XPost.Domain.dll
+D:\Dropbox\XPost\src\XPost.Application\Posts\Queries\GetPostById\GetPostByIdQuery.cs(34,13): error CS0117: 'PostDto' does not contain a definition for 'Title' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Queries\GetPostById\GetPostByIdQuery.cs(33,23): warning CS8601: Possible null reference assignment. [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\CreatePost\CreatePostCommand.cs(36,13): error CS0117: 'Post' does not contain a definition for 'IsActive' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\CreatePost\CreatePostCommand.cs(37,22): error CS0029: Cannot implicitly convert type 'string' to 'int?' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\UpdatePost\UpdatePostCommand.cs(41,14): error CS1061: 'Post' does not contain a definition for 'IsActive' and no accessible extension method 'IsActive' accepting a first argument of type 'Post' could be found (are you missing a using directive or an assembly reference?) [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\UpdatePost\UpdatePostCommand.cs(42,23): error CS0029: Cannot implicitly convert type 'string' to 'int?' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\UpdatePost\UpdatePostCommand.cs(53,13): error CS0117: 'PostDto' does not contain a definition for 'Title' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+
+Build FAILED.
+
+D:\Dropbox\XPost\src\XPost.Application\Posts\Queries\GetPostById\GetPostByIdQuery.cs(33,23): warning CS8601: Possible null reference assignment. [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Queries\GetPostById\GetPostByIdQuery.cs(34,13): error CS0117: 'PostDto' does not contain a definition for 'Title' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\CreatePost\CreatePostCommand.cs(36,13): error CS0117: 'Post' does not contain a definition for 'IsActive' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\CreatePost\CreatePostCommand.cs(37,22): error CS0029: Cannot implicitly convert type 'string' to 'int?' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\UpdatePost\UpdatePostCommand.cs(41,14): error CS1061: 'Post' does not contain a definition for 'IsActive' and no accessible extension method 'IsActive' accepting a first argument of type 'Post' could be found (are you missing a using directive or an assembly reference?) [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\UpdatePost\UpdatePostCommand.cs(42,23): error CS0029: Cannot implicitly convert type 'string' to 'int?' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+D:\Dropbox\XPost\src\XPost.Application\Posts\Commands\UpdatePost\UpdatePostCommand.cs(53,13): error CS0117: 'PostDto' does not contain a definition for 'Title' [D:\Dropbox\XPost\src\XPost.Application\XPost.Application.csproj]
+    1 Warning(s)
+    6 Error(s)
+
+Time Elapsed 00:00:01.24
