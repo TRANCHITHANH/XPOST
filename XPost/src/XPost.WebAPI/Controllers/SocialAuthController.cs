@@ -70,7 +70,7 @@ public class SocialAuthController : ControllerBase
     public IActionResult GetFacebookAuthUrl()
     {
         var state = Guid.NewGuid().ToString("N");
-        var scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,pages_manage_engagement,pages_read_usercontent,pages_messaging";
+        var scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,pages_manage_engagement,pages_read_usercontent,pages_messaging,pages_manage_metadata";
         var redirectUri = Uri.EscapeDataString(_fbSettings.RedirectUri);
 
         var url = $"https://www.facebook.com/v21.0/dialog/oauth"
