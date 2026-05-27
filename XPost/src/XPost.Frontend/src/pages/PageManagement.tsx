@@ -22,15 +22,15 @@ interface Comment {
     isSensitive: boolean;
     sensitiveType?: string;
     hidden?: boolean;
-    from?: { id: string, username: string };
+    from?: { id: string, username: string, name?: string };
     replies?: { data: Comment[] };
 }
 
 interface Conversation {
     id: string;
     updated_time: string;
-    participants: { data: { id: string, username: string }[] };
-    messages?: { data: { from?: { id: string, username: string } }[] };
+    participants: { data: { id: string, username?: string, name?: string }[] };
+    messages?: { data: { from?: { id: string, username?: string, name?: string } }[] };
     // Zalo fields
     zaloUserId?: string;
     userDisplayName?: string;
@@ -48,7 +48,7 @@ interface Message {
     isSensitive: boolean;
     sensitiveType?: string;
     created_time: string;
-    from: { id: string, username: string };
+    from: { id: string, username?: string, name?: string };
     attachments?: { data: any[] };
 }
 
@@ -572,7 +572,7 @@ export default function PageManagement() {
                         <div className="p-4 border-b bg-gray-50 font-bold text-sm text-gray-700">Hộp thư</div>
                         <div className="overflow-y-auto flex-1 p-2 space-y-2">
                             {conversations.map(conv => {
-                                const names = (conv as any).userDisplayName || conv.participants?.data?.filter(p => p.id !== pageId).map(p => p.username).join(', ') || 'Unknown';
+                                const names = (conv as any).userDisplayName || conv.participants?.data?.filter(p => p.id !== pageId).map(p => p.name || p.username || 'Người dùng Facebook').join(', ') || 'Unknown';
                                 const unreadCount = getUnreadCount(conv, pageId);
                                 const isSelected = selectedConversation?.id === conv.id;
 
@@ -610,7 +610,7 @@ export default function PageManagement() {
                         {selectedConversation ? (
                             <>
                                 <div className="p-4 border-b bg-white font-bold text-sm text-gray-800">
-                                    {selectedConversation.participants?.data?.filter(p => p.id !== pageId).map(p => p.username).join(', ')}
+                                    {selectedConversation.userDisplayName || selectedConversation.participants?.data?.filter(p => p.id !== pageId).map(p => p.name || p.username || 'Người dùng Facebook').join(', ')}
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {messages.map(msg => {
