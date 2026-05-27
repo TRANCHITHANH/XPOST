@@ -49,8 +49,25 @@ builder.Services.AddCors(options =>
                     "http://local.xpost.com", 
                     "http://local.xpost.com:5173",
                     "http://localhost:5173", // Local development
-                    "https://post.mangxuyenviet.vn" // Production Frontend
+                    "https://post.mangxuyenviet.vn", // Production Frontend
+                    "https://xpost-tau.vercel.app" // Vercel Deployment
                   )
+                  .SetIsOriginAllowed(origin => 
+                  {
+                      if (string.IsNullOrEmpty(origin)) return false;
+                      try
+                      {
+                          var host = new Uri(origin).Host;
+                          return host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || 
+                                 host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
+                                 host.Equals("post.mangxuyenviet.vn", StringComparison.OrdinalIgnoreCase) ||
+                                 host.Equals("local.xpost.com", StringComparison.OrdinalIgnoreCase);
+                      }
+                      catch
+                      {
+                          return false;
+                      }
+                  })
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
