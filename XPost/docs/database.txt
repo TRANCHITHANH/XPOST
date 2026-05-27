@@ -1,0 +1,534 @@
+/****** Object:  Table [dbo].[__EFMigrationsHistory]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[__EFMigrationsHistory](
+	[MigrationId] [nvarchar](150) NOT NULL,
+	[ProductVersion] [nvarchar](32) NOT NULL,
+ CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY CLUSTERED 
+(
+	[MigrationId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetRoleClaims]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetRoleClaims](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[RoleId] [nvarchar](450) NOT NULL,
+	[ClaimType] [nvarchar](max) NULL,
+	[ClaimValue] [nvarchar](max) NULL,
+ CONSTRAINT [PK_AspNetRoleClaims] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetRoles]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetRoles](
+	[Id] [nvarchar](450) NOT NULL,
+	[Name] [nvarchar](256) NULL,
+	[NormalizedName] [nvarchar](256) NULL,
+	[ConcurrencyStamp] [nvarchar](max) NULL,
+ CONSTRAINT [PK_AspNetRoles] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetUserClaims]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetUserClaims](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[UserId] [nvarchar](450) NOT NULL,
+	[ClaimType] [nvarchar](max) NULL,
+	[ClaimValue] [nvarchar](max) NULL,
+ CONSTRAINT [PK_AspNetUserClaims] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetUserLogins]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetUserLogins](
+	[LoginProvider] [nvarchar](128) NOT NULL,
+	[ProviderKey] [nvarchar](128) NOT NULL,
+	[ProviderDisplayName] [nvarchar](max) NULL,
+	[UserId] [nvarchar](450) NOT NULL,
+ CONSTRAINT [PK_AspNetUserLogins] PRIMARY KEY CLUSTERED 
+(
+	[LoginProvider] ASC,
+	[ProviderKey] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetUserRoles]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetUserRoles](
+	[UserId] [nvarchar](450) NOT NULL,
+	[RoleId] [nvarchar](450) NOT NULL,
+ CONSTRAINT [PK_AspNetUserRoles] PRIMARY KEY CLUSTERED 
+(
+	[UserId] ASC,
+	[RoleId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetUsers]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetUsers](
+	[Id] [nvarchar](450) NOT NULL,
+	[UserName] [nvarchar](256) NULL,
+	[NormalizedUserName] [nvarchar](256) NULL,
+	[Email] [nvarchar](256) NULL,
+	[NormalizedEmail] [nvarchar](256) NULL,
+	[EmailConfirmed] [bit] NOT NULL,
+	[PasswordHash] [nvarchar](max) NULL,
+	[SecurityStamp] [nvarchar](max) NULL,
+	[ConcurrencyStamp] [nvarchar](max) NULL,
+	[PhoneNumber] [nvarchar](max) NULL,
+	[PhoneNumberConfirmed] [bit] NOT NULL,
+	[TwoFactorEnabled] [bit] NOT NULL,
+	[LockoutEnd] [datetimeoffset](7) NULL,
+	[LockoutEnabled] [bit] NOT NULL,
+	[AccessFailedCount] [int] NOT NULL,
+	[FullName] [nvarchar](200) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+	[UpdatedAtUtc] [datetime2](3) NULL,
+	[FisrtName] [nvarchar](250) NULL,
+	[LastName] [nvarchar](250) NULL,
+	[CountryCode] [nvarchar](max) NULL,
+ CONSTRAINT [PK_AspNetUsers] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AspNetUserTokens]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AspNetUserTokens](
+	[UserId] [nvarchar](450) NOT NULL,
+	[LoginProvider] [nvarchar](128) NOT NULL,
+	[Name] [nvarchar](128) NOT NULL,
+	[Value] [nvarchar](max) NULL,
+ CONSTRAINT [PK_AspNetUserTokens] PRIMARY KEY CLUSTERED 
+(
+	[UserId] ASC,
+	[LoginProvider] ASC,
+	[Name] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Categories]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Categories](
+	[Id] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](200) NOT NULL,
+	[Slug] [nvarchar](250) NOT NULL,
+	[ParentId] [uniqueidentifier] NULL,
+	[Description] [nvarchar](500) NULL,
+	[IsActive] [bit] NOT NULL,
+	[SortOrder] [int] NOT NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+	[UpdatedAtUtc] [datetime2](3) NULL,
+ CONSTRAINT [PK_Categories] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Post_Products]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Post_Products](
+	[Id] [uniqueidentifier] NOT NULL,
+	[PostId] [uniqueidentifier] NOT NULL,
+	[SKU] [nvarchar](100) NOT NULL,
+	[Barcode] [nvarchar](100) NULL,
+	[Brand] [nvarchar](200) NULL,
+	[Model] [nvarchar](200) NULL,
+	[Price] [decimal](18, 2) NOT NULL,
+	[Price_Text] [nvarchar](200) NOT NULL,
+	[SalePrice] [decimal](18, 2) NULL,
+	[CostPrice] [decimal](18, 2) NULL,
+	[TaxPercent] [decimal](5, 2) NULL,
+	[Quantity] [int] NOT NULL,
+	[ProductMetaTitle] [nvarchar](500) NULL,
+	[ProductMetaDescription] [nvarchar](1000) NULL,
+	[Str1] [nvarchar](500) NULL,
+	[Str2] [nvarchar](500) NULL,
+	[Int1] [int] NULL,
+	[Decimal1] [decimal](18, 2) NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+	[UpdatedAtUtc] [datetime2](3) NULL,
+ CONSTRAINT [PK_Post_Products] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PostLogs]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PostLogs](
+	[Id] [uniqueidentifier] NOT NULL,
+	[PostTargetId] [uniqueidentifier] NOT NULL,
+	[Status] [varchar](50) NOT NULL,
+	[ResponseMessage] [nvarchar](max) NULL,
+	[ErrorMessage] [nvarchar](max) NULL,
+	[RetryCount] [int] NOT NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+ CONSTRAINT [PK_PostLogs] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PostMedias]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PostMedias](
+	[Id] [uniqueidentifier] NOT NULL,
+	[PostId] [uniqueidentifier] NOT NULL,
+	[MediaType] [varchar](50) NOT NULL,
+	[Url] [nvarchar](1000) NOT NULL,
+	[ThumbnailUrl] [nvarchar](1000) NULL,
+	[Title] [nvarchar](300) NULL,
+	[AltText] [nvarchar](300) NULL,
+	[SortOrder] [int] NOT NULL,
+	[IsMain] [bit] NOT NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+ CONSTRAINT [PK_PostMedias] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Posts]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Posts](
+	[Id] [uniqueidentifier] NOT NULL,
+	[UserId] [nvarchar](450) NOT NULL,
+	[Ref_ID] [int] NULL,
+	[PostType] [int] NOT NULL,
+	[Title] [nvarchar](500) NOT NULL,
+	[Slug] [nvarchar](500) NOT NULL,
+	[Description] [nvarchar](1000) NULL,
+	[Content] [nvarchar](max) NULL,
+	[MetaTitle] [nvarchar](500) NULL,
+	[MetaDescription] [nvarchar](1000) NULL,
+	[MetaKeywords] [nvarchar](1000) NULL,
+	[CategoryId] [uniqueidentifier] NULL,
+	[Tags] [nvarchar](1000) NULL,
+	[FeaturedImageUrl] [nvarchar](1000) NULL,
+	[FeaturedImageAlt] [nvarchar](500) NULL,
+	[MediaJson] [nvarchar](max) NULL,
+	[DisplayStartUtc] [datetime2](3) NULL,
+	[DisplayEndUtc] [datetime2](3) NULL,
+	[IsFeatured] [bit] NOT NULL,
+	[IsPinned] [bit] NOT NULL,
+	[AllowComment] [bit] NOT NULL,
+	[Status] [int] NOT NULL,
+	[ViewCount] [int] NOT NULL,
+	[ShareCount] [int] NOT NULL,
+	[Str1] [nvarchar](500) NULL,
+	[Str2] [nvarchar](500) NULL,
+	[Str3] [nvarchar](500) NULL,
+	[Int1] [int] NULL,
+	[Int2] [int] NULL,
+	[Decimal1] [decimal](18, 2) NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+	[UpdatedAtUtc] [datetime2](3) NULL,
+	[PublishedAtUtc] [datetime2](3) NULL,
+	[CreatedBy] [nvarchar](450) NULL,
+	[UpdatedBy] [nvarchar](450) NULL,
+ CONSTRAINT [PK_Posts] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PostTags]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PostTags](
+	[PostId] [uniqueidentifier] NOT NULL,
+	[TagId] [uniqueidentifier] NOT NULL,
+ CONSTRAINT [PK_PostTags] PRIMARY KEY CLUSTERED 
+(
+	[PostId] ASC,
+	[TagId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PostTargets]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PostTargets](
+	[Id] [uniqueidentifier] NOT NULL,
+	[PostId] [uniqueidentifier] NOT NULL,
+	[SocialAccountId] [uniqueidentifier] NOT NULL,
+	[Status] [int] NOT NULL,
+	[RetryCount] [int] NOT NULL,
+	[LastError] [nvarchar](2000) NULL,
+	[PublishedUrl] [nvarchar](1000) NULL,
+	[PublishedPostId] [nvarchar](200) NULL,
+	[IsProcessing] [bit] NOT NULL,
+	[ScheduledTimeUtc] [datetime2](3) NOT NULL,
+	[ProcessedAtUtc] [datetime2](3) NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+	[UpdatedAtUtc] [datetime2](3) NULL,
+ CONSTRAINT [PK_PostTargets] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SocialAccounts]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SocialAccounts](
+	[Id] [uniqueidentifier] NOT NULL,
+	[UserId] [nvarchar](450) NOT NULL,
+	[Platform] [int] NOT NULL,
+	[AccountName] [nvarchar](200) NOT NULL,
+	[AccountIdentifier] [nvarchar](300) NULL,
+	[ApiBaseUrl] [nvarchar](1000) NULL,
+	[ApiPostEndpoint] [nvarchar](500) NULL,
+	[ApiMethod] [nvarchar](10) NULL,
+	[AuthType] [int] NULL,
+	[ApiKey] [nvarchar](1000) NULL,
+	[ApiSecret] [nvarchar](1000) NULL,
+	[AccessToken] [nvarchar](max) NULL,
+	[RefreshToken] [nvarchar](max) NULL,
+	[TokenExpiredAtUtc] [datetime2](3) NULL,
+	[CustomHeadersJson] [nvarchar](max) NULL,
+	[FieldMappingJson] [nvarchar](max) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+	[UpdatedAtUtc] [datetime2](3) NULL,
+ CONSTRAINT [PK_SocialAccounts] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Tags]    Script Date: 3/31/2026 2:03:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Tags](
+	[Id] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](150) NOT NULL,
+	[Slug] [nvarchar](200) NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedAtUtc] [datetime2](3) NOT NULL,
+ CONSTRAINT [PK_Tags] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT ((0)) FOR [EmailConfirmed]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT ((0)) FOR [PhoneNumberConfirmed]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT ((0)) FOR [TwoFactorEnabled]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT ((1)) FOR [LockoutEnabled]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT ((0)) FOR [AccessFailedCount]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[AspNetUsers] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedAtUtc]
+GO
+ALTER TABLE [dbo].[Categories] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[Categories] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[Categories] ADD  DEFAULT ((0)) FOR [SortOrder]
+GO
+ALTER TABLE [dbo].[Categories] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedAtUtc]
+GO
+ALTER TABLE [dbo].[Post_Products] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[PostLogs] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[PostLogs] ADD  DEFAULT ((0)) FOR [RetryCount]
+GO
+ALTER TABLE [dbo].[PostLogs] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedAtUtc]
+GO
+ALTER TABLE [dbo].[PostMedias] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[PostMedias] ADD  DEFAULT ((0)) FOR [SortOrder]
+GO
+ALTER TABLE [dbo].[PostMedias] ADD  DEFAULT ((0)) FOR [IsMain]
+GO
+ALTER TABLE [dbo].[PostMedias] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedAtUtc]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF__Posts__Id__37A5467C]  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_PostType1]  DEFAULT ((0)) FOR [Ref_ID]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_PostType]  DEFAULT ((0)) FOR [PostType]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_IsFeatured]  DEFAULT ((0)) FOR [IsFeatured]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_IsPinned]  DEFAULT ((0)) FOR [IsPinned]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_AllowComment]  DEFAULT ((1)) FOR [AllowComment]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_ViewCount]  DEFAULT ((0)) FOR [ViewCount]
+GO
+ALTER TABLE [dbo].[Posts] ADD  CONSTRAINT [DF_Posts_ShareCount]  DEFAULT ((0)) FOR [ShareCount]
+GO
+ALTER TABLE [dbo].[PostTargets] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[PostTargets] ADD  CONSTRAINT [DF_PostTargets_RetryCount]  DEFAULT ((0)) FOR [RetryCount]
+GO
+ALTER TABLE [dbo].[PostTargets] ADD  CONSTRAINT [DF_PostTargets_IsProcessing]  DEFAULT ((0)) FOR [IsProcessing]
+GO
+ALTER TABLE [dbo].[SocialAccounts] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[SocialAccounts] ADD  CONSTRAINT [DF_SocialAccounts_IsActive]  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[Tags] ADD  DEFAULT (newid()) FOR [Id]
+GO
+ALTER TABLE [dbo].[Tags] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[Tags] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedAtUtc]
+GO
+ALTER TABLE [dbo].[AspNetRoleClaims]  WITH CHECK ADD  CONSTRAINT [FK_AspNetRoleClaims_Role] FOREIGN KEY([RoleId])
+REFERENCES [dbo].[AspNetRoles] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AspNetRoleClaims] CHECK CONSTRAINT [FK_AspNetRoleClaims_Role]
+GO
+ALTER TABLE [dbo].[AspNetUserClaims]  WITH CHECK ADD  CONSTRAINT [FK_AspNetUserClaims_User] FOREIGN KEY([UserId])
+REFERENCES [dbo].[AspNetUsers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AspNetUserClaims] CHECK CONSTRAINT [FK_AspNetUserClaims_User]
+GO
+ALTER TABLE [dbo].[AspNetUserLogins]  WITH CHECK ADD  CONSTRAINT [FK_AspNetUserLogins_User] FOREIGN KEY([UserId])
+REFERENCES [dbo].[AspNetUsers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AspNetUserLogins] CHECK CONSTRAINT [FK_AspNetUserLogins_User]
+GO
+ALTER TABLE [dbo].[AspNetUserRoles]  WITH CHECK ADD  CONSTRAINT [FK_AspNetUserRoles_Role] FOREIGN KEY([RoleId])
+REFERENCES [dbo].[AspNetRoles] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AspNetUserRoles] CHECK CONSTRAINT [FK_AspNetUserRoles_Role]
+GO
+ALTER TABLE [dbo].[AspNetUserRoles]  WITH CHECK ADD  CONSTRAINT [FK_AspNetUserRoles_User] FOREIGN KEY([UserId])
+REFERENCES [dbo].[AspNetUsers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AspNetUserRoles] CHECK CONSTRAINT [FK_AspNetUserRoles_User]
+GO
+ALTER TABLE [dbo].[AspNetUserTokens]  WITH CHECK ADD  CONSTRAINT [FK_AspNetUserTokens_User] FOREIGN KEY([UserId])
+REFERENCES [dbo].[AspNetUsers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[AspNetUserTokens] CHECK CONSTRAINT [FK_AspNetUserTokens_User]
+GO
+ALTER TABLE [dbo].[Categories]  WITH CHECK ADD  CONSTRAINT [FK_Categories_Parent] FOREIGN KEY([ParentId])
+REFERENCES [dbo].[Categories] ([Id])
+GO
+ALTER TABLE [dbo].[Categories] CHECK CONSTRAINT [FK_Categories_Parent]
+GO
+ALTER TABLE [dbo].[Post_Products]  WITH CHECK ADD  CONSTRAINT [FK_Post_Products_Posts] FOREIGN KEY([PostId])
+REFERENCES [dbo].[Posts] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Post_Products] CHECK CONSTRAINT [FK_Post_Products_Posts]
+GO
+ALTER TABLE [dbo].[PostLogs]  WITH CHECK ADD  CONSTRAINT [FK_PostLogs_PostTarget] FOREIGN KEY([PostTargetId])
+REFERENCES [dbo].[PostTargets] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PostLogs] CHECK CONSTRAINT [FK_PostLogs_PostTarget]
+GO
+ALTER TABLE [dbo].[PostMedias]  WITH CHECK ADD  CONSTRAINT [FK_PostMedias_Post] FOREIGN KEY([PostId])
+REFERENCES [dbo].[Posts] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PostMedias] CHECK CONSTRAINT [FK_PostMedias_Post]
+GO
+ALTER TABLE [dbo].[PostTags]  WITH CHECK ADD  CONSTRAINT [FK_PostTags_Post] FOREIGN KEY([PostId])
+REFERENCES [dbo].[Posts] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PostTags] CHECK CONSTRAINT [FK_PostTags_Post]
+GO
+ALTER TABLE [dbo].[PostTags]  WITH CHECK ADD  CONSTRAINT [FK_PostTags_Tag] FOREIGN KEY([TagId])
+REFERENCES [dbo].[Tags] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PostTags] CHECK CONSTRAINT [FK_PostTags_Tag]
+GO
+ALTER TABLE [dbo].[PostTargets]  WITH CHECK ADD  CONSTRAINT [FK_PostTargets_Post] FOREIGN KEY([PostId])
+REFERENCES [dbo].[Posts] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PostTargets] CHECK CONSTRAINT [FK_PostTargets_Post]
+GO
+ALTER TABLE [dbo].[PostTargets]  WITH CHECK ADD  CONSTRAINT [FK_PostTargets_SocialAccount] FOREIGN KEY([SocialAccountId])
+REFERENCES [dbo].[SocialAccounts] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PostTargets] CHECK CONSTRAINT [FK_PostTargets_SocialAccount]
+GO
+ALTER TABLE [dbo].[SocialAccounts]  WITH CHECK ADD  CONSTRAINT [FK_SocialAccounts_User] FOREIGN KEY([UserId])
+REFERENCES [dbo].[AspNetUsers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SocialAccounts] CHECK CONSTRAINT [FK_SocialAccounts_User]
+GO

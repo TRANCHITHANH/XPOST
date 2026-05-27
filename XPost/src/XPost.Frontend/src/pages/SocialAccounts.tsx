@@ -63,14 +63,7 @@ interface LinkedInAccountInfo {
     expiresIn: number;
 }
 
-interface TikTokAccountInfo {
-    openId: string;
-    displayName: string;
-    avatarUrl: string | null;
-    accessToken: string;
-    refreshToken: string | null;
-    expiresIn: number;
-}
+
 
 // ════════════════════════════════════════════
 //  Platform Definitions
@@ -307,9 +300,6 @@ export default function SocialAccounts() {
     const [savingThreads, setSavingThreads] = useState(false);
 
     // TikTok
-    const [showTikTokModal, setShowTikTokModal] = useState(false);
-    const [tiktokInfo, setTiktokInfo] = useState<TikTokAccountInfo | null>(null);
-    const [savingTikTok, setSavingTikTok] = useState(false);
 
     // Guide modal
     const [showGuideModal, setShowGuideModal] = useState(false);
@@ -611,21 +601,7 @@ export default function SocialAccounts() {
         }
     };
 
-    const saveTikTokAccount = async () => {
-        if (!tiktokInfo) return;
-        setSavingTikTok(true);
-        try {
-            await api.post('/social/connect/tiktok', tiktokInfo);
-            toast.success('Kết nối TikTok thành công!');
-            setShowTikTokModal(false);
-            setTiktokInfo(null);
-            fetchAccounts();
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Lỗi kết nối TikTok.');
-        } finally {
-            setSavingTikTok(false);
-        }
-    };
+
 
     // ── Manual form (Website/WordPress) ──
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {

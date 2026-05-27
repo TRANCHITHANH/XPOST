@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/XPost.Application/XPost.Application.csproj" />
+    <Project Path="src/XPost.Domain/XPost.Domain.csproj" />
+    <Project Path="src/XPost.Infrastructure/XPost.Infrastructure.csproj" />
+    <Project Path="src/XPost.WebAPI/XPost.WebAPI.csproj" />
+    <Project Path="src/XPost.WorkerService/XPost.WorkerService.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,40 @@
+Cách dùng đúng (quan trọng)
+
+Khi yêu cầu AI viết code bạn chỉ cần ghi:
+
+Follow all rules in:
+
+AI_SECURE_CODING_RULES.md
+AI_BACKEND_ARCHITECTURE.md
+AI_DATABASE_RULES.md
+AI_API_DESIGN_RULES.md
+
+AI sẽ:
+viết code đúng kiến trúc
+tự thêm security
+tránh lỗi database
+API chuẩn SaaS
+
+
+Sau khi có 5 file này
+
+AI agent gần như có đủ thông tin để build toàn bộ hệ thống:
+
+AI_SECURE_CODING_RULES.md
+AI_BACKEND_ARCHITECTURE.md
+AI_DATABASE_RULES.md
+AI_API_DESIGN_RULES.md
+AI_SAAS_SYSTEM_ARCHITECTURE.md
+
+Khi prompt chỉ cần ghi:
+
+Follow all architecture rules in /docs/ai-rules before generating code.
+Stack: .NET 10 + SQL Server + React
+System: Social Media SaaS
+
+AI sẽ tự:
+dựng backend
+thiết kế database
+tạo API
+viết worker
+viết module social integration

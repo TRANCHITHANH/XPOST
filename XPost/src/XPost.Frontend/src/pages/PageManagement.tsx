@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { API_BASE_URL } from '../lib/axios';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import toast from 'react-hot-toast';
-import { Loader2, ArrowLeft, Image as ImageIcon, MessageSquare, Send, Plus, CheckCircle, Paperclip } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, MessageSquare, Send, Plus, CheckCircle, Paperclip } from 'lucide-react';
 
 interface Post {
     id: string;
@@ -85,7 +85,6 @@ export default function PageManagement() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [loading, setLoading] = useState(false);
     const [lastWebhookSignal, setLastWebhookSignal] = useState<number>(0);
     const [accountInfo, setAccountInfo] = useState<any>(null);
     const isZalo = accountInfo?.platform === 9;
@@ -180,7 +179,7 @@ export default function PageManagement() {
                 if (res.data.pageId) setPageId(res.data.pageId);
                 if (res.data.data) {
                     setComments(prevComments => {
-                        const newCommentsMap = new Map(res.data.data.map((c: any) => [c.id, c]));
+                        const newCommentsMap = new Map<string, Comment>(res.data.data.map((c: any) => [c.id, c as Comment]));
                         
                         let baseComments = prevComments;
                         if (baseComments.length === 0) {
@@ -199,22 +198,24 @@ export default function PageManagement() {
                                 }
                             } else {
                                 const nc = newCommentsMap.get(pc.id);
-                                if (pc.replies?.data && nc.replies?.data) {
-                                    const newRepliesMap = new Map(nc.replies.data.map((r: any) => [r.id, r]));
-                                    pc.replies.data.forEach((pr: any) => {
-                                        if (!newRepliesMap.has(pr.id)) {
-                                            if (pr.isSensitive) {
-                                                newRepliesMap.set(pr.id, { ...pr, hidden: true });
+                                if (nc) {
+                                    if (pc.replies?.data && nc.replies?.data) {
+                                        const newRepliesMap = new Map<string, any>(nc.replies.data.map((r: any) => [r.id, r]));
+                                        pc.replies.data.forEach((pr: any) => {
+                                            if (!newRepliesMap.has(pr.id)) {
+                                                if (pr.isSensitive) {
+                                                    newRepliesMap.set(pr.id, { ...pr, hidden: true });
+                                                }
                                             }
+                                        });
+                                        nc.replies.data = Array.from(newRepliesMap.values())
+                                            .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                                    } else if (pc.replies?.data && !nc.replies?.data) {
+                                        // Giữ lại các reply nhạy cảm nếu reply array bị mất
+                                        const sensitiveReplies = pc.replies.data.filter((r: any) => r.isSensitive).map((r: any) => ({ ...r, hidden: true }));
+                                        if (sensitiveReplies.length > 0) {
+                                            nc.replies = { data: sensitiveReplies };
                                         }
-                                    });
-                                    nc.replies.data = Array.from(newRepliesMap.values())
-                                        .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-                                } else if (pc.replies?.data && !nc.replies?.data) {
-                                    // Giữ lại các reply nhạy cảm nếu reply array bị mất
-                                    const sensitiveReplies = pc.replies.data.filter((r: any) => r.isSensitive).map((r: any) => ({ ...r, hidden: true }));
-                                    if (sensitiveReplies.length > 0) {
-                                        nc.replies = { data: sensitiveReplies };
                                     }
                                 }
                             }
@@ -382,7 +383,7 @@ export default function PageManagement() {
                 <div>
                     <span className="font-bold text-sm flex items-center gap-2">
                         {comment.username || 'Người dùng ẩn danh'}
-                        {!isReply && isReplied && <CheckCircle className="w-4 h-4 text-green-500" title="Đã phản hồi" />}
+                        {!isReply && isReplied && <span title="Đã phản hồi"><CheckCircle className="w-4 h-4 text-green-500" /></span>}
                         {needsReply && <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-orange-200">Chưa phản hồi</span>}
                     </span>
                     <span className="text-xs text-gray-500 mt-0.5 block">{new Date(comment.timestamp).toLocaleString()}</span>
@@ -594,7 +595,7 @@ export default function PageManagement() {
                                                     {unreadCount} tin mới
                                                 </span>
                                             ) : (
-                                                conv.messages?.data?.length > 0 && <CheckCircle className="w-4 h-4 text-gray-300" title="Đã phản hồi" />
+                                                conv.messages?.data && conv.messages.data.length > 0 && <span title="Đã phản hồi"><CheckCircle className="w-4 h-4 text-gray-300" /></span>
                                             )}
                                         </div>
                                         <p className="text-xs text-gray-500 mt-1">{conv.lastMessagePreview && <span className="text-gray-400 mr-1 truncate inline-block max-w-[150px] align-bottom">{conv.lastMessagePreview}</span>}{new Date(conv.updated_time).toLocaleString()}</p>

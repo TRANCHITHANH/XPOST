@@ -1,0 +1,15 @@
+Cách dùng để AI viết code an toàn hơn
+
+Trong prompt bạn chỉ cần ghi:
+
+Follow AI_SAAS_SECURITY_ARCHITECTURE.md before generating code.
+Stack: .NET 10 + SQL Server + React
+System: Multi-tenant SaaS
+
+AI agent sẽ:
+
+đọc rule
+
+generate code đúng architecture
+
+tự thêm security
