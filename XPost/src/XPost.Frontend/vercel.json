@@ -2,6 +2,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": " https://extent-epidermis-compactly.ngrok-free.dev//api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
