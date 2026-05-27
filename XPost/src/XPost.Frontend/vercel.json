@@ -6,7 +6,7 @@
       "destination": "https://extent-epidermis-compactly.ngrok-free.dev/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
