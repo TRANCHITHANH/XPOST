@@ -12,6 +12,8 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    // Skip ngrok browser warning page for API calls
+    config.headers['ngrok-skip-browser-warning'] = 'true';
     return config;
 });
 
@@ -25,8 +27,8 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
             // Bỏ qua nếu đang logout chủ động
-            if (isLoggingOut) return new Promise(() => {});
-            
+            if (isLoggingOut) return new Promise(() => { });
+
             // Don't redirect to login if we're already on the login/register endpoint
             const requestUrl = error.config?.url || '';
             if (!requestUrl.includes('/auth/login') && !requestUrl.includes('/auth/register')) {
@@ -35,15 +37,15 @@ api.interceptors.response.use(
                     localStorage.removeItem('token');
                     const msg = error.response?.data?.message || 'Phiên đăng nhập đã hết hạn hoặc tài khoản bị khóa.';
                     toast.error(msg, { duration: 3000 });
-                    
+
                     setTimeout(() => {
                         window.location.href = '/login';
                     }, 1500);
                 }
-                
+
                 // Return a never-resolving promise to prevent local catch blocks from firing
                 // and throwing duplicate error toasts while redirecting
-                return new Promise(() => {});
+                return new Promise(() => { });
             }
         }
         return Promise.reject(error);
