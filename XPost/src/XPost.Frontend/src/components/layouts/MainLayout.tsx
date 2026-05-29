@@ -78,8 +78,26 @@ const menuItems = [
         icon: Icons.Platforms,
         isDynamicSubItems: true
     },
-    { name: 'Facebook Ads', path: '/facebook-ads', icon: Icons.Megaphone },
-    { name: 'TikTok Ads', path: '/tiktok-ads', icon: Icons.Megaphone },
+    {
+        name: 'Ads Manager',
+        path: '/facebook-ads',
+        icon: Icons.Megaphone,
+        isStaticSubItems: true,
+        subItems: [
+            { 
+                name: 'Facebook Ads', 
+                path: '/facebook-ads',
+                color: 'text-blue-600',
+                icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12S0 5.446 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
+            },
+            { 
+                name: 'TikTok Ads', 
+                path: '/tiktok-ads',
+                color: 'text-black',
+                icon: <svg viewBox="0 0 448 512" className="w-4 h-4" fill="currentColor"><path d="M448 209.91a210.06 210.06 0 0 1-122.77-39.25v178.66A172.93 172.93 0 1 1 152.3 176.5a171.18 171.18 0 0 1 73-16.14h38.66v72.82c-7.77-1.39-15.82-2.11-24-2.11a100.08 100.08 0 1 0 100.07 100.07V0h73.74a209.18 209.18 0 0 0 34.33 97.63c22.61 24.32 53.64 38.64 88.08 41.5v70.78z" /></svg>
+            }
+        ]
+    },
     { name: 'Media Library', path: '/media', icon: Icons.Media },
     { name: 'Analytics', path: '/analytics', icon: Icons.Analytics },
     { name: 'Users', path: '/users', icon: Icons.Users },
@@ -91,7 +109,7 @@ export default function MainLayout() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Platforms']);
+    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Platforms', 'Ads Manager']);
     const [connectedAccounts, setConnectedAccounts] = useState<any[]>([]);
     const location = useLocation();
     const navigate = useNavigate();
@@ -325,6 +343,58 @@ export default function MainLayout() {
                                                         </NavLink>
                                                     );
                                                 })}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (item as any).isStaticSubItems ? (
+                                    <>
+                                        <div
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                                                setExpandedMenus(prev => 
+                                                    prev.includes(item.name) ? prev.filter(m => m !== item.name) : [...prev, item.name]
+                                                );
+                                            }}
+                                            className={`
+                                              flex items-center justify-between p-2.5 rounded-lg transition-all duration-200 group cursor-pointer
+                                              ${location.pathname.startsWith(item.path) || (item.subItems as any[]).some(sub => location.pathname.startsWith(sub.path))
+                                                ? 'bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-gray-100/80 text-gray-900 font-medium'
+                                                : 'text-gray-500 hover:bg-black/5 hover:text-gray-900'}
+                                            `}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`${isSidebarCollapsed ? 'mx-auto' : ''}`}>
+                                                    <item.icon />
+                                                </div>
+                                                {!isSidebarCollapsed && <span className="text-sm">{item.name}</span>}
+                                            </div>
+                                            {!isSidebarCollapsed && (
+                                                <div className={`transition-transform duration-200 ${expandedMenus.includes(item.name) ? 'rotate-90' : ''}`}>
+                                                    <Icons.ChevronRight />
+                                                </div>
+                                            )}
+
+                                            {isSidebarCollapsed && (
+                                                <div className="absolute left-full ml-4 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                                                    {item.name}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Render Static SubItems */}
+                                        {expandedMenus.includes(item.name) && !isSidebarCollapsed && (
+                                            <div className="flex flex-col gap-1 pl-9 mt-1 mb-2">
+                                                {(item.subItems as any[]).map((sub) => (
+                                                    <NavLink 
+                                                        key={sub.name} 
+                                                        to={sub.path}
+                                                        className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
+                                                            ${isActive ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                                                    >
+                                                        <div className={sub.color}>{sub.icon}</div>
+                                                        <span className="truncate">{sub.name}</span>
+                                                    </NavLink>
+                                                ))}
                                             </div>
                                         )}
                                     </>

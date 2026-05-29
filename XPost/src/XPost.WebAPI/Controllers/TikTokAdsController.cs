@@ -155,7 +155,20 @@ public class TikTokAdsController : ControllerBase
         try
         {
             var campaign = await _adsService.CreateCampaignAsync(adAccountId, dto, ct);
-            return Ok(campaign);
+            return Ok(new
+            {
+                campaign.Id,
+                campaign.TikTokCampaignId,
+                campaign.Name,
+                campaign.ObjectiveType,
+                campaign.Status,
+                campaign.Budget,
+                campaign.BudgetMode,
+                campaign.StartTimeUtc,
+                campaign.EndTimeUtc,
+                campaign.CreatedAt,
+                campaign.UpdatedAt
+            });
         }
         catch (Exception ex)
         {
