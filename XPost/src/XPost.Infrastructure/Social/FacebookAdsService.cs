@@ -328,7 +328,7 @@ public class FacebookAdsService : IFacebookAdsService
         var accessToken = account.AccessToken;
         var actId = account.AdAccountId;
 
-        // 1. Create Campaign on Meta
+        // 1. Create Campaign on Meta (Using Campaign Budget Optimization - CBO)
         var campUrl = $"{GraphApiBase}/{actId}/campaigns";
         var campPayload = new Dictionary<string, string>
         {
@@ -336,7 +336,8 @@ public class FacebookAdsService : IFacebookAdsService
             ["objective"] = dto.Objective,
             ["status"] = "PAUSED", // Create in PAUSED state to prevent charging immediately during setup
             ["special_ad_categories"] = "[\"NONE\"]",
-            ["is_adset_budget_sharing_enabled"] = "false",
+            ["daily_budget"] = ((int)dto.Budget).ToString(), // CBO enabled, budget in account currency units (VND)
+            ["bid_strategy"] = "LOWEST_COST_WITHOUT_CAP",
             ["access_token"] = accessToken
         };
 
@@ -370,12 +371,13 @@ public class FacebookAdsService : IFacebookAdsService
         // 3. Create Ad Set on Meta
         var adsetUrl = $"{GraphApiBase}/{actId}/adsets";
         
-        // Setup targeting options
+        // Setup targeting options, including the mandatory advantage_audience flag
         var targetingObj = new
         {
             geo_locations = new { countries = new[] { dto.TargetingLocations } },
             age_min = dto.TargetingAgeMin,
-            age_max = dto.TargetingAgeMax
+            age_max = dto.TargetingAgeMax,
+            targeting_automation = new { advantage_audience = 0 }
         };
         var targetingJson = JsonSerializer.Serialize(targetingObj);
 
@@ -384,7 +386,7 @@ public class FacebookAdsService : IFacebookAdsService
             ["name"] = dto.AdSetName,
             ["campaign_id"] = metaCampaignId,
             ["billing_event"] = dto.BillingEvent,
-            ["daily_budget"] = ((int)(dto.Budget * 100)).ToString(), // In currency units (some accounts require cents/decimals multiplied)
+            ["optimization_goal"] = dto.Objective == "OUTCOME_TRAFFIC" ? "LINK_CLICKS" : "IMPRESSIONS",
             ["targeting"] = targetingJson,
             ["status"] = "ACTIVE",
             ["access_token"] = accessToken
@@ -394,6 +396,7 @@ public class FacebookAdsService : IFacebookAdsService
         var adsetJson = await adsetResponse.Content.ReadAsStringAsync(cancellationToken);
         if (!adsetResponse.IsSuccessStatusCode)
         {
+            _logger.LogError("Meta Ad Set creation failed. Status: {Status}. Response: {Json}", adsetResponse.StatusCode, adsetJson);
             throw new Exception($"Meta Ad Set Creation Failed: {ExtractErrorMessage(adsetJson)}");
         }
 
