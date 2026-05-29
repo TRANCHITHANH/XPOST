@@ -330,10 +330,11 @@ public class FacebookAdsService : IFacebookAdsService
 
         // 1. Create Campaign on Meta
         var campUrl = $"{GraphApiBase}/{actId}/campaigns";
+        var objectiveToUse = dto.Objective;
         var campPayload = new Dictionary<string, string>
         {
             ["name"] = dto.Name,
-            ["objective"] = dto.Objective,
+            ["objective"] = objectiveToUse,
             ["status"] = "PAUSED", // Create in PAUSED state to prevent charging immediately during setup
             ["special_ad_categories"] = "[\"NONE\"]",
             ["access_token"] = accessToken
@@ -341,6 +342,40 @@ public class FacebookAdsService : IFacebookAdsService
 
         var campResponse = await client.PostAsync(campUrl, new FormUrlEncodedContent(campPayload), cancellationToken);
         var campJson = await campResponse.Content.ReadAsStringAsync(cancellationToken);
+
+        // Fallback to classic objective if sandbox doesn't support ODAX (Invalid parameter error)
+        if (!campResponse.IsSuccessStatusCode && objectiveToUse.StartsWith("OUTCOME_"))
+        {
+            var errorMessage = ExtractErrorMessage(campJson);
+            if (errorMessage.Contains("Invalid parameter", StringComparison.OrdinalIgnoreCase) || 
+                errorMessage.Contains("param", StringComparison.OrdinalIgnoreCase) ||
+                errorMessage.Contains("objective", StringComparison.OrdinalIgnoreCase))
+            {
+                var classicObjective = objectiveToUse switch
+                {
+                    "OUTCOME_TRAFFIC" => "TRAFFIC",
+                    "OUTCOME_LEADS" => "LEAD_GENERATION",
+                    "OUTCOME_SALES" => "CONVERSIONS",
+                    "OUTCOME_AWARENESS" => "REACH",
+                    "OUTCOME_ENGAGEMENT" => "POST_ENGAGEMENT",
+                    "OUTCOME_APP_PROMOTION" => "APP_INSTALLS",
+                    _ => objectiveToUse
+                };
+
+                if (classicObjective != objectiveToUse)
+                {
+                    _logger.LogWarning("Meta Campaign creation failed with ODAX objective '{Objective}' due to: {Error}. Retrying with classic objective '{ClassicObjective}'.", 
+                        objectiveToUse, errorMessage, classicObjective);
+
+                    objectiveToUse = classicObjective;
+                    campPayload["objective"] = objectiveToUse;
+
+                    campResponse = await client.PostAsync(campUrl, new FormUrlEncodedContent(campPayload), cancellationToken);
+                    campJson = await campResponse.Content.ReadAsStringAsync(cancellationToken);
+                }
+            }
+        }
+
         if (!campResponse.IsSuccessStatusCode)
         {
             throw new Exception($"Meta Campaign Creation Failed: {ExtractErrorMessage(campJson)}");
@@ -355,7 +390,7 @@ public class FacebookAdsService : IFacebookAdsService
             FacebookAdAccountId = account.Id,
             MetaCampaignId = metaCampaignId,
             Name = dto.Name,
-            Objective = dto.Objective,
+            Objective = objectiveToUse,
             Status = "PAUSED",
             Budget = dto.Budget,
             StartTimeUtc = dto.StartTimeUtc.ToUniversalTime(),
