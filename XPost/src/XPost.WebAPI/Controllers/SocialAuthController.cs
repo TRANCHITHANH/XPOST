@@ -13,6 +13,7 @@ using XPost.Domain.Enums;
 using XPost.Domain.Interfaces;
 using XPost.Infrastructure.Social;
 using XPost.Application.DTOs;
+using XPost.Application.Interfaces;
 
 namespace XPost.WebAPI.Controllers;
 
@@ -32,6 +33,7 @@ public class SocialAuthController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SocialAuthController> _logger;
     private readonly IMemoryCache _cache;
+    private readonly IFacebookAdsService _fbAdsService;
 
     public SocialAuthController(
         IUnitOfWork unitOfWork,
@@ -44,7 +46,8 @@ public class SocialAuthController : ControllerBase
         IOptions<TikTokSettings> tiktokSettings,
         IHttpClientFactory httpClientFactory,
         ILogger<SocialAuthController> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IFacebookAdsService fbAdsService)
     {
         _unitOfWork = unitOfWork;
         _fbSettings = fbSettings.Value;
@@ -57,6 +60,7 @@ public class SocialAuthController : ControllerBase
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _cache = cache;
+        _fbAdsService = fbAdsService;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -70,7 +74,7 @@ public class SocialAuthController : ControllerBase
     public IActionResult GetFacebookAuthUrl()
     {
         var state = Guid.NewGuid().ToString("N");
-        var scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,pages_manage_engagement,pages_messaging,pages_manage_metadata";
+        var scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,pages_manage_engagement,pages_messaging,pages_manage_metadata,ads_read,ads_management,business_management";
         var redirectUri = Uri.EscapeDataString(_fbSettings.RedirectUri);
 
         var url = $"https://www.facebook.com/v21.0/dialog/oauth"
@@ -151,9 +155,14 @@ public class SocialAuthController : ControllerBase
                 });
             }
 
-            // Return HTML that sends page list to opener
-            var pagesJsonStr = JsonSerializer.Serialize(pages);
-            return ReturnCallbackHtml(true, "OK", pagesJsonStr, "facebook");
+            // Return HTML that sends page list and user access token to opener
+            var resultObj = new
+            {
+                pages = pages,
+                userAccessToken = userAccessToken
+            };
+            var resultJsonStr = JsonSerializer.Serialize(resultObj);
+            return ReturnCallbackHtml(true, "OK", resultJsonStr, "facebook");
         }
         catch (Exception ex)
         {
@@ -219,6 +228,24 @@ public class SocialAuthController : ControllerBase
 
         await _unitOfWork.CompleteAsync();
 
+        // ═══ AUTOMATED BACKGROUND ADS CONNECTION ═══
+        if (!string.IsNullOrEmpty(dto.UserAccessToken))
+        {
+            try
+            {
+                var adAccounts = await _fbAdsService.GetAccessibleAdAccountsAsync(dto.UserAccessToken);
+                foreach (var adAcc in adAccounts)
+                {
+                    await _fbAdsService.ConnectAdAccountAsync(adAcc.Id, adAcc.Name, dto.UserAccessToken);
+                }
+                _logger.LogInformation("Successfully auto-connected {Count} Facebook Ad Accounts for user {UserId}", adAccounts.Count, userId);
+            }
+            catch (Exception adEx)
+            {
+                _logger.LogWarning(adEx, "Auto-connecting Facebook Ad Accounts failed for user {UserId}", userId);
+            }
+        }
+
         _logger.LogInformation("User {UserId} connected {Count} Facebook page(s)", userId, saved.Count);
         return Ok(new { message = $"Đã kết nối {saved.Count} trang Facebook.", accounts = saved });
     }
@@ -232,7 +259,7 @@ public class SocialAuthController : ControllerBase
     {
         var state = Guid.NewGuid().ToString("N");
         // Added business_management and auth_type=rerequest to force fresh permissions
-        var scopes = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management,instagram_manage_messages,instagram_manage_comments,pages_manage_metadata";
+        var scopes = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management,instagram_manage_messages,instagram_manage_comments,pages_manage_metadata,ads_read,ads_management";
         var redirectUri = Uri.EscapeDataString(_fbSettings.RedirectUri.Replace("callback/facebook", "callback/instagram"));
 
         var url = $"https://www.facebook.com/v21.0/dialog/oauth"
@@ -1858,6 +1885,7 @@ public class SocialAuthController : ControllerBase
 
 public class ConnectFacebookPagesDto
 {
+    public string? UserAccessToken { get; set; }
     public List<FacebookPageDto> Pages { get; set; } = new();
 }
 

@@ -41,9 +41,15 @@ export default function FacebookAdsDashboard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => { fetchAccounts(); }, []);
-  useEffect(() => { if (selectedAccountId) fetchCampaigns(selectedAccountId); }, [selectedAccountId]);
+  useEffect(() => { if (selectedAccountId) fetchCampaigns(selectedAccountId); }, [selectedAccountId, startDate, endDate]);
 
   const fetchAccounts = async () => {
     try {
@@ -64,7 +70,7 @@ export default function FacebookAdsDashboard() {
       const dailyMap: Record<string, DailyInsight> = {};
       for (const camp of res.data) {
         try {
-          const insRes = await api.get(`/facebookads/campaigns/${camp.id}/insights`);
+          const insRes = await api.get(`/facebookads/campaigns/${camp.id}/insights?startDate=${startDate}&endDate=${endDate}`);
           const s = insRes.data.summary;
           totalImp += s.impressions || 0; totalClicks += s.clicks || 0;
           totalReach += s.reach || 0; totalSpend += Number(s.spend) || 0;
@@ -77,10 +83,10 @@ export default function FacebookAdsDashboard() {
         } catch { /* skip */ }
       }
       setSummary({ impressions: totalImp, reach: totalReach, clicks: totalClicks, spend: totalSpend, ctr: totalImp > 0 ? (totalClicks / totalImp) * 100 : 0, cpc: totalClicks > 0 ? totalSpend / totalClicks : 0 });
-      setChartData(Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date)).slice(-7));
+      setChartData(Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date)));
     } catch { toast.error('Không thể tải thông tin chiến dịch'); }
     finally { setIsLoading(false); }
-  }, []);
+  }, [startDate, endDate]);
 
   const handleSync = async () => {
     if (!selectedAccountId) return;
@@ -176,9 +182,25 @@ export default function FacebookAdsDashboard() {
                   <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               )}
-              <button onClick={() => setShowConnectModal(true)} className="flex items-center gap-1.5 px-4 py-2.5 bg-white/15 hover:bg-white/25 border border-white/25 text-white text-sm font-semibold rounded-xl transition-all backdrop-blur-sm">
-                <Link className="w-4 h-4" /> Liên kết
-              </button>
+              {accounts.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/25 text-white rounded-xl px-3 py-2 text-xs font-semibold">
+                  <span className="opacity-70">Từ:</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="bg-transparent border-none text-white focus:outline-none [color-scheme:dark] w-24 cursor-pointer"
+                  />
+                  <span className="opacity-70">Đến:</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="bg-transparent border-none text-white focus:outline-none [color-scheme:dark] w-24 cursor-pointer"
+                  />
+                </div>
+              )}
+
               {accounts.length > 0 && (
                 <button onClick={handleSync} disabled={isSyncing} className="p-2.5 bg-white/15 hover:bg-white/25 border border-white/25 text-white rounded-xl transition-all backdrop-blur-sm disabled:opacity-50" title="Đồng bộ Meta">
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />

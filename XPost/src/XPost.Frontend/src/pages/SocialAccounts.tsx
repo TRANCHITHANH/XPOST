@@ -276,6 +276,7 @@ export default function SocialAccounts() {
     // Facebook page selection
     const [showFbPageModal, setShowFbPageModal] = useState(false);
     const [fbPages, setFbPages] = useState<FacebookPage[]>([]);
+    const [fbUserAccessToken, setFbUserAccessToken] = useState('');
     const [selectedFbPages, setSelectedFbPages] = useState<Set<string>>(new Set());
     const [savingFbPages, setSavingFbPages] = useState(false);
 
@@ -390,9 +391,10 @@ export default function SocialAccounts() {
                     fetchAccounts();
                 } else {
                     // Facebook returned page list — show page picker
-                    const pages: FacebookPage[] = event.data.data;
-                    setFbPages(pages);
-                    setSelectedFbPages(new Set(pages.map(p => p.pageId)));
+                    const { pages, userAccessToken } = event.data.data;
+                    setFbPages(pages || []);
+                    setFbUserAccessToken(userAccessToken || '');
+                    setSelectedFbPages(new Set((pages || []).map((p: any) => p.pageId)));
                     setShowFbPageModal(true);
                 }
             } else if (!event.data.success) {
@@ -424,7 +426,7 @@ export default function SocialAccounts() {
 
         setSavingFbPages(true);
         try {
-            await api.post('/social/connect/facebook', { pages });
+            await api.post('/social/connect/facebook', { pages, userAccessToken: fbUserAccessToken });
             toast.success(`Đã kết nối ${pages.length} trang Facebook!`);
             setShowFbPageModal(false);
             fetchAccounts();

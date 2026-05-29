@@ -42,9 +42,15 @@ export default function TikTokAdsDashboard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => { fetchAccounts(); }, []);
-  useEffect(() => { if (selectedAccountId) fetchCampaigns(selectedAccountId); }, [selectedAccountId]);
+  useEffect(() => { if (selectedAccountId) fetchCampaigns(selectedAccountId); }, [selectedAccountId, startDate, endDate]);
 
   const fetchAccounts = async () => {
     try {
@@ -69,7 +75,7 @@ export default function TikTokAdsDashboard() {
 
       for (const camp of res.data) {
         try {
-          const insRes = await api.get(`/tiktokads/campaigns/${camp.id}/insights`);
+          const insRes = await api.get(`/tiktokads/campaigns/${camp.id}/insights?startDate=${startDate}&endDate=${endDate}`);
           const s = insRes.data.summary;
           totalImp += s.impressions || 0; 
           totalClicks += s.clicks || 0;
@@ -95,13 +101,13 @@ export default function TikTokAdsDashboard() {
         ctr: totalImp > 0 ? (totalClicks / totalImp) * 100 : 0, 
         cpc: totalClicks > 0 ? totalSpend / totalClicks : 0 
       });
-      setChartData(Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date)).slice(-7));
+      setChartData(Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date)));
     } catch { 
       toast.error('Không thể tải thông tin chiến dịch TikTok'); 
     } finally { 
       setIsLoading(false); 
     }
-  }, []);
+  }, [startDate, endDate]);
 
   const handleSync = async () => {
     if (!selectedAccountId) return;
@@ -254,9 +260,25 @@ export default function TikTokAdsDashboard() {
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               )}
-              <button onClick={() => setShowConnectModal(true)} className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-200 text-sm font-semibold rounded-xl transition-all shadow-lg">
-                <Link className="w-4 h-4 text-[#00f2fe]" /> Kết nối TK
-              </button>
+              {accounts.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-xs font-semibold shadow-lg">
+                  <span className="text-slate-400">Từ:</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="bg-transparent border-none text-slate-100 focus:outline-none [color-scheme:dark] w-24 cursor-pointer focus:text-[#00f2fe]"
+                  />
+                  <span className="text-slate-400">Đến:</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="bg-transparent border-none text-slate-100 focus:outline-none [color-scheme:dark] w-24 cursor-pointer focus:text-[#00f2fe]"
+                  />
+                </div>
+              )}
+
               {accounts.length > 0 && (
                 <button onClick={handleSync} disabled={isSyncing} className="p-2.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-200 rounded-xl transition-all disabled:opacity-50" title="Đồng bộ TikTok">
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-[#00f2fe]' : ''}`} />
