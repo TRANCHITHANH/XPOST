@@ -355,9 +355,9 @@ export default function CreateAdCampaignWizard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ngày bắt đầu</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block truncate" title="Ngày bắt đầu">Ngày bắt đầu</label>
                   <input
                     type="datetime-local"
                     name="startTimeUtc"
@@ -368,7 +368,7 @@ export default function CreateAdCampaignWizard() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ngày kết thúc (Không bắt buộc)</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block truncate" title="Ngày kết thúc (Tùy chọn)">Ngày kết thúc (Tùy chọn)</label>
                   <input
                     type="datetime-local"
                     name="endTimeUtc"
@@ -379,15 +379,15 @@ export default function CreateAdCampaignWizard() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Trạng thái khởi tạo</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block truncate" title="Trạng thái">Trạng thái khởi tạo</label>
                   <select
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 truncate"
                   >
-                    <option value="ACTIVE">Hoạt động ngay khi tạo (Active)</option>
-                    <option value="PAUSED">Tạm dừng bản nháp (Paused)</option>
+                    <option value="ACTIVE">Hoạt động (Active)</option>
+                    <option value="PAUSED">Bản nháp (Paused)</option>
                   </select>
                 </div>
               </div>
