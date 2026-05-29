@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Share2, Zap, BarChart2, Shield } from 'lucide-react';
+import { Share2, BarChart2, Shield } from 'lucide-react';
 
 export default function LandingPage() {
     return (
