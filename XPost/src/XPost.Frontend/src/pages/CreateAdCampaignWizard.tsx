@@ -60,6 +60,8 @@ export default function CreateAdCampaignWizard() {
   });
 
   const [interestInput, setInterestInput] = useState('');
+  const [mediaMode, setMediaMode] = useState<'upload' | 'url'>('upload');
+  const [urlInput, setUrlInput] = useState('');
 
   useEffect(() => {
     fetchConnectedAccounts();
@@ -146,9 +148,8 @@ export default function CreateAdCampaignWizard() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Resolve path
-      const baseUrl = api.defaults.baseURL || 'http://local-api.xpost.com:5243';
-      const fileUrl = res.data.url.startsWith('http') ? res.data.url : `${baseUrl.replace('/api', '')}${res.data.url}`;
+      // Store as relative path so backend can read directly from wwwroot
+      const fileUrl = res.data.url.startsWith('/') ? res.data.url : `/${res.data.url}`;
       
       setFormData(prev => ({ ...prev, mediaUrl: fileUrl }));
       toast.success('Upload ảnh thành công!', { id: 'upload' });
@@ -156,6 +157,20 @@ export default function CreateAdCampaignWizard() {
       console.error(err);
       toast.error('Upload ảnh thất bại: ' + (err.response?.data?.message || err.message), { id: 'upload' });
     }
+  };
+
+  const handleApplyImageUrl = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập URL ảnh hợp lệ');
+      return;
+    }
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      toast.error('URL ảnh phải bắt đầu bằng http:// hoặc https://');
+      return;
+    }
+    setFormData(prev => ({ ...prev, mediaUrl: trimmed }));
+    toast.success('Đã áp dụng link ảnh thành công!');
   };
 
   const validateStep = (step: number) => {
@@ -511,31 +526,105 @@ export default function CreateAdCampaignWizard() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Hình ảnh quảng cáo</label>
+              {/* Image Source Tabs */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Hình ảnh quảng cáo</label>
+
+                {/* Tab switcher */}
+                <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setMediaMode('upload')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      mediaMode === 'upload'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    📁 Tải lên máy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaMode('url')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      mediaMode === 'url'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    🔗 Link URL
+                  </button>
+                </div>
+
+                {/* Upload File */}
+                {mediaMode === 'upload' && (
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleUploadMedia}
                     className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
                   />
-                </div>
+                )}
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Nút kêu gọi hành động (CTA)</label>
-                  <select
-                    name="callToAction"
-                    value={formData.callToAction}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  >
-                    <option value="LEARN_MORE">Tìm hiểu thêm (Learn More)</option>
-                    <option value="SHOP_NOW">Mua ngay (Shop Now)</option>
-                    <option value="SIGN_UP">Đăng ký (Sign Up)</option>
-                    <option value="CONTACT_US">Liên hệ ngay (Contact Us)</option>
-                  </select>
-                </div>
+                {/* URL Input */}
+                {mediaMode === 'url' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="Dán link URL ảnh vào đây... (https://...)"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyImageUrl()}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyImageUrl}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-[0_4px_12px_rgba(37,99,235,0.2)] whitespace-nowrap"
+                    >
+                      Áp dụng
+                    </button>
+                  </div>
+                )}
+
+                {/* Preview thumbnail */}
+                {formData.mediaUrl && (
+                  <div className="flex items-center gap-3 mt-2 p-2 bg-green-50 border border-green-200 rounded-xl">
+                    <img
+                      src={formData.mediaUrl.startsWith('/') ? `${(api.defaults.baseURL || '').replace('/api', '')}${formData.mediaUrl}` : formData.mediaUrl}
+                      alt="preview"
+                      className="w-12 h-12 object-cover rounded-lg border border-green-300 shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-green-700">✅ Ảnh đã chọn</p>
+                      <p className="text-[11px] text-gray-500 truncate font-mono">{formData.mediaUrl}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setFormData(prev => ({ ...prev, mediaUrl: '' })); setUrlInput(''); }}
+                      className="text-gray-400 hover:text-red-500 text-lg font-bold shrink-0 transition-colors"
+                      title="Xóa ảnh"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Nút kêu gọi hành động (CTA)</label>
+                <select
+                  name="callToAction"
+                  value={formData.callToAction}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                >
+                  <option value="LEARN_MORE">Tìm hiểu thêm (Learn More)</option>
+                  <option value="SHOP_NOW">Mua ngay (Shop Now)</option>
+                  <option value="SIGN_UP">Đăng ký (Sign Up)</option>
+                  <option value="CONTACT_US">Liên hệ ngay (Contact Us)</option>
+                </select>
               </div>
 
               <div className="space-y-1">
@@ -673,14 +762,15 @@ export default function CreateAdCampaignWizard() {
             <div className="flex-1 bg-gray-100 relative overflow-hidden flex items-center justify-center min-h-[160px]">
               {formData.mediaUrl ? (
                 <img 
-                  src={formData.mediaUrl} 
+                  src={formData.mediaUrl.startsWith('/') ? `${(api.defaults.baseURL || '').replace('/api', '')}${formData.mediaUrl}` : formData.mediaUrl} 
                   alt="Creative" 
                   className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = ''; }}
                 />
               ) : (
                 <div className="flex flex-col items-center gap-1.5 text-gray-400 text-center p-6">
                   <ImageIcon className="w-8 h-8 opacity-40 animate-bounce" />
-                  <p className="text-[10px] leading-snug">Chưa có ảnh quảng cáo.<br />Hãy upload ở Bước 3.</p>
+                  <p className="text-[10px] leading-snug">Chưa có ảnh quảng cáo.<br />Upload file hoặc dán link URL ở Bước 3.</p>
                 </div>
               )}
             </div>
