@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import api, { API_BASE_URL } from '../../lib/axios';
+import SafeImage from './SafeImage';
 
 function resolveUrl(url: string): string {
     if (!url) return '';
@@ -205,7 +206,7 @@ export default function FileUploader({ value, onChange, accept = 'all' }: FileUp
 
                     {fileType === 'image' || (preview && !fileType) ? (
                         <div className="p-3 flex justify-center">
-                            <img
+                            <SafeImage
                                 src={preview!}
                                 alt="Preview"
                                 className="max-h-48 rounded-lg object-contain"
