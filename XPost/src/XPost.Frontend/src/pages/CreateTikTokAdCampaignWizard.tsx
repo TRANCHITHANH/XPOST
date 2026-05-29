@@ -4,7 +4,7 @@ import api from '../lib/axios';
 import toast from 'react-hot-toast';
 import { 
   ChevronRight, ChevronLeft, Settings, Users, Image as ImageIcon, 
-  Globe, Smartphone, ArrowRight, Video, Eye, Heart, MessageCircle, Share2, Music
+  Smartphone, ArrowRight, Video, Heart, MessageCircle, Share2, Music
 } from 'lucide-react';
 
 interface AdAccount {

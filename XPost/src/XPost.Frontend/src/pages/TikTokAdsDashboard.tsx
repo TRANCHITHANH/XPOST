@@ -6,7 +6,7 @@ import {
   Plus, RefreshCw, BarChart2, ExternalLink, Link, AlertTriangle,
   Eye, Trash2, Pause, Play, ChevronDown, X, Calendar,
   TrendingUp, MousePointerClick, DollarSign, Zap, Settings,
-  CheckCircle, Clock, Target, Smartphone
+  Target
 } from 'lucide-react';
 
 interface AdAccount { id: string; advertiserId: string; accountName: string; isActive: boolean; }
