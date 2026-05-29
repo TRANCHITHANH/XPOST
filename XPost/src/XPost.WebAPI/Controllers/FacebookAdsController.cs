@@ -165,13 +165,15 @@ public class FacebookAdsController : ControllerBase
     [HttpDelete("campaigns/{id}")]
     public async Task<IActionResult> DeleteCampaign(Guid id, CancellationToken ct)
     {
+        // Use IgnoreQueryFilters to bypass TenantId global filter
         var campaign = await _dbContext.FacebookCampaigns
+            .IgnoreQueryFilters()
             .Include(x => x.AdSets)
                 .ThenInclude(x => x.Ads)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
         if (campaign == null)
-            return NotFound(new { message = "Campaign not found." });
+            return NotFound(new { message = $"Campaign {id} not found." });
 
         // Remove all nested ads and adsets
         foreach (var adSet in campaign.AdSets)
