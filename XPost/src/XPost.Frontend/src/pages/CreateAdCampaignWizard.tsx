@@ -204,7 +204,9 @@ export default function CreateAdCampaignWizard() {
       
       const payload = {
         ...formData,
-        targetingInterests: formData.targetingInterests
+        targetingInterests: formData.targetingInterests,
+        startTimeUtc: new Date(formData.startTimeUtc).toISOString(),
+        endTimeUtc: formData.endTimeUtc ? new Date(formData.endTimeUtc).toISOString() : null
       };
       
       await api.post(`/facebookads/campaigns?adAccountId=${formData.adAccountId}`, payload);
@@ -212,7 +214,16 @@ export default function CreateAdCampaignWizard() {
       navigate('/facebook-ads');
     } catch (err: any) {
       console.error(err);
-      toast.error('Khởi tạo chiến dịch thất bại: ' + (err.response?.data?.message || err.message), { id: 'submit', duration: 4000 });
+      let errorMsg = err.message;
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.response?.data?.errors) {
+        const validationErrors = err.response.data.errors;
+        errorMsg = Object.keys(validationErrors)
+          .map(key => `${validationErrors[key].join(', ')}`)
+          .join(' | ');
+      }
+      toast.error('Khởi tạo chiến dịch thất bại: ' + errorMsg, { id: 'submit', duration: 6000 });
     } finally {
       setIsSubmitting(false);
     }
