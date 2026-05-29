@@ -335,7 +335,7 @@ public class FacebookAdsService : IFacebookAdsService
             ["name"] = dto.Name,
             ["objective"] = dto.Objective,
             ["status"] = "PAUSED", // Create in PAUSED state to prevent charging immediately during setup
-            ["special_ad_categories"] = "[]",
+            ["special_ad_categories"] = "[\"NONE\"]",
             ["access_token"] = accessToken
         };
 
