@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/axios';
 import toast from 'react-hot-toast';
 import { 
-  ChevronRight, ChevronLeft, Award, Settings, Users, Image as ImageIcon, 
-  Globe, AlertCircle, Smartphone, CheckCircle, ArrowRight
+  ChevronRight, ChevronLeft, Settings, Users, Image as ImageIcon, 
+  Globe, Smartphone, ArrowRight
 } from 'lucide-react';
 
 interface AdAccount {

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import toast from 'react-hot-toast';
 import { 
-  Plus, RefreshCw, BarChart2, TrendingUp, DollarSign, MousePointer, 
-  Eye, ToggleLeft, ToggleRight, Settings, ExternalLink, Link, AlertTriangle
+  Plus, RefreshCw, BarChart2, ExternalLink, Link, AlertTriangle
 } from 'lucide-react';
 
 interface AdAccount {
@@ -48,7 +47,7 @@ export default function FacebookAdsDashboard() {
     ctr: 0,
     cpc: 0
   });
-  const [insights, setInsights] = useState<any[]>([]);
+  const [, setInsights] = useState<any[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -92,11 +91,7 @@ export default function FacebookAdsDashboard() {
       setIsLoading(true);
       const res = await api.get(`/facebookads/campaigns?adAccountId=${accId}`);
       setCampaigns(res.data);
-      
-      // Calculate a fallback sum from campaigns if there are no deep insights yet
-      const fallbackSum = res.data.reduce((acc: any, camp: any) => {
-        return acc; 
-      }, { impressions: 0, clicks: 0, spend: 0 });
+
 
       // Fetch insights for the first campaign if any exists to populate cards
       if (res.data.length > 0) {
@@ -183,7 +178,7 @@ export default function FacebookAdsDashboard() {
         accountName: acc.name,
         userAccessToken: accessTokenInput
       };
-      const res = await api.post('/facebookads/accounts/connect', payload);
+      await api.post('/facebookads/accounts/connect', payload);
       toast.success(`Đã kết nối thành công tài khoản: ${acc.name}`);
       setShowConnectModal(false);
       setAccessTokenInput('');
