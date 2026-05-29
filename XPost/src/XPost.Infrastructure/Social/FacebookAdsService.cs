@@ -252,7 +252,7 @@ public class FacebookAdsService : IFacebookAdsService
                             await _dbContext.SaveChangesAsync(cancellationToken);
 
                             // 3. Sync Ads for this Ad Set
-                            var adUrl = $"{GraphApiBase}/{metaAdsetId}/ads?fields=id,name,creative{{id,name,title,body,image_url,thumbnail_url}},status&limit=50&access_token={accessToken}";
+                            var adUrl = $"{GraphApiBase}/{metaAdsetId}/ads?fields=id,name,creative,status&limit=50&access_token={accessToken}";
                             var adResponse = await client.GetAsync(adUrl, cancellationToken);
                             if (adResponse.IsSuccessStatusCode)
                             {
@@ -273,11 +273,30 @@ public class FacebookAdsService : IFacebookAdsService
 
                                         if (adItem.TryGetProperty("creative", out var creativeObj))
                                         {
-                                            title = creativeObj.TryGetProperty("title", out var tProp) ? tProp.GetString() ?? "" : "";
-                                            bodyText = creativeObj.TryGetProperty("body", out var bProp) ? bProp.GetString() ?? "" : "";
-                                            mediaUrl = creativeObj.TryGetProperty("image_url", out var imgProp) 
-                                                ? imgProp.GetString() ?? "" 
-                                                : creativeObj.TryGetProperty("thumbnail_url", out var thumbProp) ? thumbProp.GetString() ?? "" : "";
+                                            var creativeId = creativeObj.TryGetProperty("id", out var cIdProp) ? cIdProp.GetString() : null;
+                                            if (!string.IsNullOrEmpty(creativeId))
+                                            {
+                                                try
+                                                {
+                                                    // Query creative details separately to avoid crashing the whole ads sync if Page permissions are restricted
+                                                    var creativeDetailUrl = $"{GraphApiBase}/{creativeId}?fields=name,title,body,image_url,thumbnail_url&access_token={accessToken}";
+                                                    var crResponse = await client.GetAsync(creativeDetailUrl, cancellationToken);
+                                                    if (crResponse.IsSuccessStatusCode)
+                                                    {
+                                                        var crJson = await crResponse.Content.ReadAsStringAsync(cancellationToken);
+                                                        var crData = JsonSerializer.Deserialize<JsonElement>(crJson);
+                                                        title = crData.TryGetProperty("title", out var tProp) ? tProp.GetString() ?? "" : "";
+                                                        bodyText = crData.TryGetProperty("body", out var bProp) ? bProp.GetString() ?? "" : "";
+                                                        mediaUrl = crData.TryGetProperty("image_url", out var imgProp) 
+                                                            ? imgProp.GetString() ?? "" 
+                                                            : crData.TryGetProperty("thumbnail_url", out var thumbProp) ? thumbProp.GetString() ?? "" : "";
+                                                    }
+                                                }
+                                                catch (Exception creativeEx)
+                                                {
+                                                    _logger.LogWarning(creativeEx, "Failed to fetch Facebook creative {CreativeId} details. Skipping creative detail sync.", creativeId);
+                                                }
+                                            }
                                         }
 
                                         var existingAd = await _dbContext.FacebookAds
@@ -310,6 +329,11 @@ public class FacebookAdsService : IFacebookAdsService
                                     }
                                     await _dbContext.SaveChangesAsync(cancellationToken);
                                 }
+                            }
+                            else
+                            {
+                                var err = await adResponse.Content.ReadAsStringAsync(cancellationToken);
+                                _logger.LogError("Meta Ads sync failed for adset {AdsetId}. Status: {Status}. Error: {Err}", metaAdsetId, adResponse.StatusCode, err);
                             }
                         }
                     }
