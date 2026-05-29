@@ -85,7 +85,7 @@ export default function FileUploader({ value, onChange, accept = 'all' }: FileUp
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             const url = res.data.url;
-            setPreview(resolveUrl(url));
+            // Keep the local base64 preview instead of replacing it with the server URL to prevent ngrok/CORS load failures
             onChange(url);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Upload thất bại. Vui lòng thử lại.');
