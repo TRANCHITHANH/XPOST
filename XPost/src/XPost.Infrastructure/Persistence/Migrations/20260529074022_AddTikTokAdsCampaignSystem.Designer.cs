@@ -12,7 +12,7 @@ using XPost.Infrastructure.Persistence;
 namespace XPost.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260529070758_AddTikTokAdsCampaignSystem")]
+    [Migration("20260529074022_AddTikTokAdsCampaignSystem")]
     partial class AddTikTokAdsCampaignSystem
     {
         /// <inheritdoc />
@@ -1244,6 +1244,301 @@ namespace XPost.Infrastructure.Persistence.Migrations
                     b.ToTable("Tenants");
                 });
 
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAd", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<string>("BodyText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CallToAction")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("LEARN_MORE");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<string>("DestinationUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MediaUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("ACTIVE");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TikTokAdGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TikTokAdId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TikTokAdGroupId");
+
+                    b.ToTable("TikTokAds");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdvertiserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TikTokAdAccounts");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<decimal?>("DailyBudget")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlacementType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("PLACEMENT_MODE_DEFAULT");
+
+                    b.Property<int>("TargetingAgeMax")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(65);
+
+                    b.Property<int>("TargetingAgeMin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(18);
+
+                    b.Property<string>("TargetingGenders")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("ALL");
+
+                    b.Property<string>("TargetingInterests")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TargetingLocations")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("VN");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TikTokAdGroupId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TikTokCampaignId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TikTokCampaignId");
+
+                    b.ToTable("TikTokAdGroups");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdInsight", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<int>("Clicks")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Impressions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("Reach")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal>("Spend")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TikTokAdId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TikTokAdId");
+
+                    b.ToTable("TikTokAdInsights");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokCampaign", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<decimal>("Budget")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BudgetMode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<DateTime?>("EndTimeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ObjectiveType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartTimeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("DRAFT");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TikTokAdAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TikTokCampaignId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TikTokAdAccountId");
+
+                    b.ToTable("TikTokCampaigns");
+                });
+
             modelBuilder.Entity("XPost.Domain.Entities.TikTokConversation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1728,6 +2023,50 @@ namespace XPost.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAd", b =>
+                {
+                    b.HasOne("XPost.Domain.Entities.TikTokAdGroup", "AdGroup")
+                        .WithMany("Ads")
+                        .HasForeignKey("TikTokAdGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AdGroup");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdGroup", b =>
+                {
+                    b.HasOne("XPost.Domain.Entities.TikTokCampaign", "Campaign")
+                        .WithMany("AdGroups")
+                        .HasForeignKey("TikTokCampaignId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Campaign");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdInsight", b =>
+                {
+                    b.HasOne("XPost.Domain.Entities.TikTokAd", "Ad")
+                        .WithMany("Insights")
+                        .HasForeignKey("TikTokAdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ad");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokCampaign", b =>
+                {
+                    b.HasOne("XPost.Domain.Entities.TikTokAdAccount", "AdAccount")
+                        .WithMany("Campaigns")
+                        .HasForeignKey("TikTokAdAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AdAccount");
+                });
+
             modelBuilder.Entity("XPost.Domain.Entities.TikTokConversation", b =>
                 {
                     b.HasOne("XPost.Domain.Entities.SocialAccount", "SocialAccount")
@@ -1841,6 +2180,26 @@ namespace XPost.Infrastructure.Persistence.Migrations
                     b.Navigation("SocialAccounts");
 
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAd", b =>
+                {
+                    b.Navigation("Insights");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdAccount", b =>
+                {
+                    b.Navigation("Campaigns");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokAdGroup", b =>
+                {
+                    b.Navigation("Ads");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.TikTokCampaign", b =>
+                {
+                    b.Navigation("AdGroups");
                 });
 
             modelBuilder.Entity("XPost.Domain.Entities.TikTokConversation", b =>
