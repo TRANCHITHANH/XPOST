@@ -62,6 +62,9 @@ export default function CreateAdCampaignWizard() {
   const [interestInput, setInterestInput] = useState('');
   const [mediaMode, setMediaMode] = useState<'upload' | 'url'>('upload');
   const [urlInput, setUrlInput] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [localPreview, setLocalPreview] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchConnectedAccounts();
@@ -134,28 +137,42 @@ export default function CreateAdCampaignWizard() {
     }));
   };
 
-  const handleUploadMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
+  const doUploadFile = async (file: File) => {
     const uploadData = new FormData();
     uploadData.append('file', file);
 
+    // Show local preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setLocalPreview(objectUrl);
+
     try {
-      toast.loading('Đang upload ảnh lên thư viện cục bộ...', { id: 'upload' });
+      toast.loading('Đang upload ảnh...', { id: 'upload' });
       const res = await api.post('/upload', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
-      // Store as relative path so backend can read directly from wwwroot
       const fileUrl = res.data.url.startsWith('/') ? res.data.url : `/${res.data.url}`;
-      
       setFormData(prev => ({ ...prev, mediaUrl: fileUrl }));
       toast.success('Upload ảnh thành công!', { id: 'upload' });
     } catch (err: any) {
-      console.error(err);
+      setLocalPreview('');
       toast.error('Upload ảnh thất bại: ' + (err.response?.data?.message || err.message), { id: 'upload' });
+    }
+  };
+
+  const handleUploadMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await doUploadFile(files[0]);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      await doUploadFile(file);
+    } else {
+      toast.error('Chỉ hỗ trợ file ảnh (jpg, png, gif, webp...)');
     }
   };
 
@@ -556,14 +573,38 @@ export default function CreateAdCampaignWizard() {
                   </button>
                 </div>
 
-                {/* Upload File */}
+                {/* Upload File - Custom Drag & Drop Zone */}
                 {mediaMode === 'upload' && (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleUploadMedia}
-                    className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={handleDrop}
+                    className={`relative cursor-pointer border-2 border-dashed rounded-2xl transition-all duration-200 flex flex-col items-center justify-center gap-2 py-6 px-4 text-center select-none ${
+                      isDragOver
+                        ? 'border-blue-400 bg-blue-50 scale-[1.01]'
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-2xl transition-transform ${
+                      isDragOver ? 'scale-125' : ''
+                    }`}>
+                      {isDragOver ? '🎯' : '🖼️'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">
+                        {isDragOver ? 'Thả ảnh vào đây!' : 'Kéo & thả ảnh hoặc nhấn để chọn'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, WEBP, GIF — Tối đa 10MB</p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadMedia}
+                      className="hidden"
+                    />
+                  </div>
                 )}
 
                 {/* URL Input */}
@@ -588,22 +629,29 @@ export default function CreateAdCampaignWizard() {
                 )}
 
                 {/* Preview thumbnail */}
-                {formData.mediaUrl && (
+                {(formData.mediaUrl || localPreview) && (
                   <div className="flex items-center gap-3 mt-2 p-2 bg-green-50 border border-green-200 rounded-xl">
                     <img
-                      src={formData.mediaUrl.startsWith('/') ? `${(api.defaults.baseURL || '').replace('/api', '')}${formData.mediaUrl}` : formData.mediaUrl}
+                      src={localPreview || (formData.mediaUrl.startsWith('/') ? `${(api.defaults.baseURL || '').replace('/api', '')}${formData.mediaUrl}` : formData.mediaUrl)}
                       alt="preview"
-                      className="w-12 h-12 object-cover rounded-lg border border-green-300 shrink-0"
+                      className="w-14 h-14 object-cover rounded-xl border border-green-300 shrink-0 shadow-sm"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-green-700">✅ Ảnh đã chọn</p>
-                      <p className="text-[11px] text-gray-500 truncate font-mono">{formData.mediaUrl}</p>
+                      <p className="text-xs font-bold text-green-700">✅ Ảnh đã chọn</p>
+                      <p className="text-[11px] text-gray-400 truncate font-mono mt-0.5">
+                        {formData.mediaUrl || 'Đang upload...'}
+                      </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => { setFormData(prev => ({ ...prev, mediaUrl: '' })); setUrlInput(''); }}
-                      className="text-gray-400 hover:text-red-500 text-lg font-bold shrink-0 transition-colors"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, mediaUrl: '' }));
+                        setUrlInput('');
+                        setLocalPreview('');
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 rounded-lg text-sm font-bold shrink-0 transition-all"
                       title="Xóa ảnh"
                     >
                       ✕
