@@ -71,6 +71,8 @@ public static class DependencyInjection
         services.AddScoped<ISocialPublisher, ThreadsPublisher>();
         services.AddScoped<ISocialPublisher, TikTokPublisher>();
 
+        services.AddScoped<IFacebookAdsService, FacebookAdsService>();
+
         // Background Services
         services.AddHostedService<PostPublisherService>();
         services.AddHostedService<KeywordGeneratorService>();

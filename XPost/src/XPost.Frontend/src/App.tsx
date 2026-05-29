@@ -15,6 +15,8 @@ import Keywords from './pages/Keywords';
 import PageManagement from './pages/PageManagement';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import FacebookAdsDashboard from './pages/FacebookAdsDashboard';
+import CreateAdCampaignWizard from './pages/CreateAdCampaignWizard';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -37,6 +39,8 @@ function App() {
           <Route path="/platforms/:accountId/manage" element={<PageManagement />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/keywords" element={<Keywords />} />
+          <Route path="/facebook-ads" element={<FacebookAdsDashboard />} />
+          <Route path="/facebook-ads/create" element={<CreateAdCampaignWizard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin/tenants" element={<Tenants />} />
           <Route path="/settings/company" element={<CompanyProfile />} />

@@ -45,6 +45,9 @@ const Icons = {
     ),
     ChevronRight: () => (
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+    ),
+    Megaphone: () => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
     )
 };
 
@@ -75,6 +78,7 @@ const menuItems = [
         icon: Icons.Platforms,
         isDynamicSubItems: true
     },
+    { name: 'Facebook Ads', path: '/facebook-ads', icon: Icons.Megaphone },
     { name: 'Media Library', path: '/media', icon: Icons.Media },
     { name: 'Analytics', path: '/analytics', icon: Icons.Analytics },
     { name: 'Users', path: '/users', icon: Icons.Users },
