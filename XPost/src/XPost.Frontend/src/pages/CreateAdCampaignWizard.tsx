@@ -323,13 +323,24 @@ export default function CreateAdCampaignWizard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ngày bắt đầu</label>
                   <input
                     type="datetime-local"
                     name="startTimeUtc"
                     value={formData.startTimeUtc}
+                    onChange={handleInputChange}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ngày kết thúc (Không bắt buộc)</label>
+                  <input
+                    type="datetime-local"
+                    name="endTimeUtc"
+                    value={formData.endTimeUtc}
                     onChange={handleInputChange}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
