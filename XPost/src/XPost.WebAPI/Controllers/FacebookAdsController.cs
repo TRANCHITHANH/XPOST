@@ -162,6 +162,29 @@ public class FacebookAdsController : ControllerBase
         }
     }
 
+    [HttpDelete("campaigns/{id}")]
+    public async Task<IActionResult> DeleteCampaign(Guid id, CancellationToken ct)
+    {
+        var campaign = await _dbContext.FacebookCampaigns
+            .Include(x => x.AdSets)
+                .ThenInclude(x => x.Ads)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+        if (campaign == null)
+            return NotFound(new { message = "Campaign not found." });
+
+        // Remove all nested ads and adsets
+        foreach (var adSet in campaign.AdSets)
+        {
+            _dbContext.FacebookAds.RemoveRange(adSet.Ads);
+        }
+        _dbContext.FacebookAdSets.RemoveRange(campaign.AdSets);
+        _dbContext.FacebookCampaigns.Remove(campaign);
+        await _dbContext.SaveChangesAsync(ct);
+
+        return Ok(new { message = "Campaign deleted successfully.", id });
+    }
+
     [HttpPost("accounts/{id}/sync")]
     public async Task<IActionResult> SyncAccountData(Guid id, CancellationToken ct)
     {
