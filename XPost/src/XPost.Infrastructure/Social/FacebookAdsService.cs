@@ -538,24 +538,63 @@ public class FacebookAdsService : IFacebookAdsService
             byte[] imageBytes;
             string fileName = "ad_image.jpg";
 
-            var apiBaseUrl = _configuration["AppConfig:ApiBaseUrl"]?.TrimEnd('/');
-            var isLocal = !string.IsNullOrEmpty(apiBaseUrl) && imageUrl.StartsWith(apiBaseUrl, StringComparison.OrdinalIgnoreCase);
+            _logger.LogInformation("Uploading image to Meta Ad Library. ImageUrl: {ImageUrl}", imageUrl);
 
             string? localPath = null;
-            if (isLocal)
+
+            // Check if the URL points to local server (localhost, 127.0.0.1, configured ngrok base, or relative path)
+            var apiBaseUrl = _configuration["AppConfig:ApiBaseUrl"]?.TrimEnd('/') ?? "";
+            var isConfiguredBase = !string.IsNullOrEmpty(apiBaseUrl) && imageUrl.StartsWith(apiBaseUrl, StringComparison.OrdinalIgnoreCase);
+            var isLocalhost = imageUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+                              imageUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                              imageUrl.Contains("::1", StringComparison.OrdinalIgnoreCase);
+            var isRelativePath = imageUrl.StartsWith("/");
+
+            if (isRelativePath)
             {
-                var relativePath = imageUrl.Substring(apiBaseUrl!.Length).TrimStart('/').Replace("/", "\\");
-                localPath = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), relativePath);
+                // Relative path like /uploads/images/... - map directly to wwwroot
+                var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                var relativePath = imageUrl.TrimStart('/').Replace("/", "\\");
+                localPath = Path.Combine(webRoot, relativePath);
+                _logger.LogInformation("Resolved relative path to local disk: {LocalPath}", localPath);
+            }
+            else if (isConfiguredBase || isLocalhost)
+            {
+                // Try to extract relative path after /uploads/ and map to local file system
+                string relativePath;
+                if (isConfiguredBase)
+                {
+                    relativePath = imageUrl.Substring(apiBaseUrl.Length).TrimStart('/');
+                }
+                else
+                {
+                    // Strip "http://localhost:PORT" prefix
+                    var uri = new Uri(imageUrl);
+                    relativePath = uri.AbsolutePath.TrimStart('/');
+                }
+
+                relativePath = relativePath.Replace("/", "\\");
+                var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                localPath = Path.Combine(webRoot, relativePath);
+                _logger.LogInformation("Resolved local image path: {LocalPath}", localPath);
             }
 
             if (localPath != null && File.Exists(localPath))
             {
                 imageBytes = await File.ReadAllBytesAsync(localPath, ct);
                 fileName = Path.GetFileName(localPath);
+                _logger.LogInformation("Read image from local disk: {FileName} ({Bytes} bytes)", fileName, imageBytes.Length);
+            }
+            else if (localPath != null)
+            {
+                // Local path detected but file doesn't exist on disk
+                _logger.LogError("Image file not found on disk at path: {LocalPath} (from URL: {Url})", localPath, imageUrl);
+                return "";
             }
             else
             {
-                // Download URL over HTTP
+                // Download URL over HTTP (for externally hosted images)
+                _logger.LogInformation("Downloading image from external URL: {Url}", imageUrl);
                 var downloadClient = _httpClientFactory.CreateClient();
                 imageBytes = await downloadClient.GetByteArrayAsync(imageUrl, ct);
                 if (imageUrl.Contains("/"))
@@ -577,9 +616,11 @@ public class FacebookAdsService : IFacebookAdsService
             var json = await res.Content.ReadAsStringAsync(ct);
             if (!res.IsSuccessStatusCode)
             {
-                _logger.LogError("Ad Image upload failed: {Json}", json);
+                _logger.LogError("Ad Image upload to Meta failed: {Json}", json);
                 return "";
             }
+
+            _logger.LogInformation("Ad Image uploaded to Meta successfully. Response: {Json}", json);
 
             var doc = JsonSerializer.Deserialize<JsonElement>(json);
             if (doc.TryGetProperty("images", out var imagesObj) && imagesObj.ValueKind == JsonValueKind.Object)

@@ -99,7 +99,50 @@ public class FacebookAdsController : ControllerBase
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(ct);
 
-        return Ok(campaigns);
+        // Project to DTO to avoid circular reference (AdAccount -> Campaigns -> AdAccount -> ...)
+        var result = campaigns.Select(c => new
+        {
+            c.Id,
+            c.MetaCampaignId,
+            c.Name,
+            c.Objective,
+            c.Status,
+            c.Budget,
+            c.StartTimeUtc,
+            c.EndTimeUtc,
+            c.CreatedAt,
+            c.UpdatedAt,
+            adAccount = c.AdAccount == null ? null : new
+            {
+                c.AdAccount.Id,
+                c.AdAccount.AdAccountId,
+                c.AdAccount.AccountName
+            },
+            adSets = c.AdSets.Select(s => new
+            {
+                s.Id,
+                s.MetaAdSetId,
+                s.Name,
+                s.BillingEvent,
+                s.DailyBudget,
+                s.TargetingAgeMin,
+                s.TargetingAgeMax,
+                s.TargetingLocations,
+                ads = s.Ads.Select(a => new
+                {
+                    a.Id,
+                    a.MetaAdId,
+                    a.Name,
+                    a.Title,
+                    a.BodyText,
+                    a.MediaUrl,
+                    a.Status,
+                    a.CallToAction
+                })
+            })
+        });
+
+        return Ok(result);
     }
 
     [HttpPost("campaigns")]
