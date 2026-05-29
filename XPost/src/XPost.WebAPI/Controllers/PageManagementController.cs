@@ -97,6 +97,33 @@ public class PageManagementController : ControllerBase
         return Content(content, "application/json");
     }
 
+    [HttpDelete("{accountId}/posts/{postId}")]
+    public async Task<IActionResult> DeletePost(Guid accountId, string postId)
+    {
+        var account = await GetValidAccount(accountId);
+        if (account == null) return NotFound("Account not found");
+
+        var client = _httpClientFactory.CreateClient();
+        string url = $"{_graphApiBase}/{postId}?access_token={account.AccessToken}";
+
+        try
+        {
+            var response = await client.DeleteAsync(url);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return BadRequest($"Failed to delete post from Facebook: {content}");
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error deleting post: {ex.Message}");
+        }
+    }
+
     [HttpGet("{accountId}/posts/{postId}/comments")]
     public async Task<IActionResult> GetComments(Guid accountId, string postId)
     {

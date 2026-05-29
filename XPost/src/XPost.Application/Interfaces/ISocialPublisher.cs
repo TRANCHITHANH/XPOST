@@ -22,6 +22,11 @@ public interface ISocialPublisher
     /// Validates that the account credentials are still valid.
     /// </summary>
     Task<bool> ValidateCredentialsAsync(SocialAccount account, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a published post from the external platform programmatically.
+    /// </summary>
+    Task<bool> DeletePublishedPostAsync(SocialAccount account, string publishedPostId, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }
 
 /// <summary>

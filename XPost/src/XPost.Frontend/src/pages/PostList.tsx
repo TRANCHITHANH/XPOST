@@ -6,6 +6,18 @@ import ConfirmModal from '../components/common/ConfirmModal';
 
 import { formatDateTimeVN } from '../lib/dateUtils';
 
+const resolveFileUrl = (url?: string | null) => {
+    if (!url) return '';
+    let resolved = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    if (resolved.includes('ngrok-free.dev') && !import.meta.env.PROD) {
+        const localApi = window.location.hostname === 'local.xpost.com' 
+            ? 'http://local-api.xpost.com:5243' 
+            : 'http://localhost:5243';
+        return resolved.replace(/^https:\/\/.*?\.ngrok-free\.dev/i, localApi);
+    }
+    return resolved;
+};
+
 interface PostTarget {
     socialAccountId: string;
     scheduledTimeUtc: string;
@@ -272,7 +284,7 @@ export default function PostList() {
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0 h-14 w-14 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
                                                     {post.featuredImageUrl ? (
-                                                        <img className="h-14 w-14 object-cover" src={post.featuredImageUrl.startsWith('http') ? post.featuredImageUrl : `${API_BASE_URL}${post.featuredImageUrl}`} alt="" />
+                                                        <img className="h-14 w-14 object-cover" src={resolveFileUrl(post.featuredImageUrl)} alt="" />
                                                     ) : (
                                                         <svg className="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />

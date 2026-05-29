@@ -1,7 +1,17 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5243');
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (() => {
+    if (import.meta.env.PROD) return '';
+    const { hostname, protocol, origin } = window.location;
+    if (hostname.includes('ngrok-free.dev') || hostname.includes('vercel.app') || hostname.includes('mangxuyenviet.vn')) {
+        return origin;
+    }
+    if (hostname === 'local.xpost.com') {
+        return `${protocol}//local-api.xpost.com:5243`;
+    }
+    return `${protocol}//${hostname}:5243`;
+})();
 
 const api = axios.create({
     baseURL: `${API_BASE_URL}/api`, // Matches launchSettings.json profile

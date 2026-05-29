@@ -1,7 +1,20 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { Save, Building, Mail, Phone, MapPin, Hash, Camera, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../../lib/axios';
+import api, { API_BASE_URL } from '../../lib/axios';
+
+const resolveFileUrl = (url?: string | null) => {
+    if (!url) return '';
+    let resolved = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    if (resolved.includes('ngrok-free.dev') && !import.meta.env.PROD) {
+        const localApi = window.location.hostname === 'local.xpost.com' 
+            ? 'http://local-api.xpost.com:5243' 
+            : 'http://localhost:5243';
+        return resolved.replace(/^https:\/\/.*?\.ngrok-free\.dev/i, localApi);
+    }
+    return resolved;
+};
+
 import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -167,7 +180,7 @@ export default function CompanyProfile() {
                         <div className="relative">
                             <div className={`w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border filter drop-shadow-sm transition-opacity ${uploadingLogo ? 'opacity-50' : 'opacity-100'}`}>
                                 {form.logoUrl ? (
-                                    <img src={form.logoUrl} alt="Company Logo" className="w-full h-full object-cover bg-white" />
+                                     <img src={resolveFileUrl(form.logoUrl)} alt="Company Logo" className="w-full h-full object-cover bg-white" />
                                 ) : (
                                     <Building className="w-10 h-10 text-gray-300" />
                                 )}

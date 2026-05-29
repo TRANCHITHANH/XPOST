@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api, { API_BASE_URL } from '../lib/axios';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Image as ImageIcon, MessageSquare, Send, Plus, CheckCircle, Paperclip } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, MessageSquare, Send, Plus, CheckCircle, Paperclip, Trash2 } from 'lucide-react';
 
 interface Post {
     id: string;
@@ -140,6 +140,24 @@ export default function PageManagement() {
             console.error(err);
         }
     }, [accountId, apiPrefix]);
+
+    const handleDeletePost = async (postId: string) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này trên Facebook không? Hành động này sẽ xóa trực tiếp bài viết khỏi trang Facebook của bạn.")) {
+            return;
+        }
+
+        try {
+            const toastId = toast.loading('Đang xóa bài viết trên Facebook...');
+            await api.delete(`${apiPrefix}/${accountId}/posts/${postId}`);
+            toast.success('Xóa bài viết thành công!', { id: toastId });
+            setSelectedPost(null);
+            fetchPosts();
+        } catch (err: any) {
+            console.error('Failed to delete post:', err);
+            const errorMsg = err.response?.data || 'Xóa bài viết thất bại.';
+            toast.error(typeof errorMsg === 'string' ? errorMsg : 'Xóa bài viết thất bại.');
+        }
+    };
 
     const fetchConversations = useCallback(async () => {
         try {
@@ -487,7 +505,18 @@ export default function PageManagement() {
                         {selectedPost ? (
                             <>
                                 <div className="p-3 border-b bg-white flex justify-between items-center shadow-sm z-10 shrink-0">
-                                    <span className="font-bold text-sm text-gray-800">Chi tiết bài viết {!isZalo && '& Bình luận'}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-sm text-gray-800">Chi tiết bài viết {!isZalo && '& Bình luận'}</span>
+                                        {accountInfo?.platform === 1 && (
+                                            <button
+                                                onClick={() => handleDeletePost(selectedPost.id)}
+                                                className="px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1 border border-red-100"
+                                                title="Xóa bài viết trên Facebook"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" /> Xóa bài
+                                            </button>
+                                        )}
+                                    </div>
                                     {!isZalo && <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-md font-medium">Tự động làm mới 10s</span>}
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">

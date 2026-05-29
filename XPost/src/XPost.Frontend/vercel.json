@@ -5,6 +5,10 @@
       "destination": "https://extent-epidermis-compactly.ngrok-free.dev/api/:path*"
     },
     {
+      "source": "/uploads/:path*",
+      "destination": "https://extent-epidermis-compactly.ngrok-free.dev/uploads/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

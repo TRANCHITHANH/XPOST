@@ -367,6 +367,36 @@ public class FacebookPublisher : ISocialPublisher
         }
     }
 
+    public async Task<bool> DeletePublishedPostAsync(SocialAccount account, string publishedPostId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(account.AccessToken) || string.IsNullOrEmpty(publishedPostId))
+            return false;
+
+        var client = _httpClientFactory.CreateClient();
+        var url = $"{GraphApiBase}/{publishedPostId}?access_token={account.AccessToken}";
+
+        try
+        {
+            var response = await client.DeleteAsync(url, cancellationToken);
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully deleted Facebook post {PublishedPostId}", publishedPostId);
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to delete Facebook post {PublishedPostId}. Status: {StatusCode}, Body: {Body}", publishedPostId, response.StatusCode, json);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting Facebook post {PublishedPostId}", publishedPostId);
+            return false;
+        }
+    }
+
     private static string ExtractErrorMessage(string json)
     {
         try

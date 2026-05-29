@@ -7,8 +7,14 @@ import { formatDate } from '../utils/formatters';
 // Resolve file URL: if relative path, prepend API base URL
 const resolveFileUrl = (url?: string | null) => {
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `${API_BASE_URL}${url}`;
+    let resolved = url.startsWith('http://') || url.startsWith('https://') ? url : `${API_BASE_URL}${url}`;
+    if (resolved.includes('ngrok-free.dev') && !import.meta.env.PROD) {
+        const localApi = window.location.hostname === 'local.xpost.com' 
+            ? 'http://local-api.xpost.com:5243' 
+            : 'http://localhost:5243';
+        return resolved.replace(/^https:\/\/.*?\.ngrok-free\.dev/i, localApi);
+    }
+    return resolved;
 };
 
 interface UserItem {

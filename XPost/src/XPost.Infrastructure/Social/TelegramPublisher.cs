@@ -214,6 +214,47 @@ public class TelegramPublisher : ISocialPublisher
         }
     }
 
+    public async Task<bool> DeletePublishedPostAsync(SocialAccount account, string publishedPostId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(account.AccessToken) || string.IsNullOrEmpty(account.AccountIdentifier) || string.IsNullOrEmpty(publishedPostId))
+            return false;
+
+        if (!int.TryParse(publishedPostId, out var messageId))
+        {
+            _logger.LogWarning("Invalid message ID format for Telegram post deletion: {PublishedPostId}", publishedPostId);
+            return false;
+        }
+
+        var client = _httpClientFactory.CreateClient();
+        var url = $"{TelegramApiBase}/bot{account.AccessToken}/deleteMessage";
+        var payload = new
+        {
+            chat_id = account.AccountIdentifier,
+            message_id = messageId
+        };
+
+        try
+        {
+            var response = await client.PostAsJsonAsync(url, payload, cancellationToken);
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully deleted Telegram message {MessageId} from chat {ChatId}", messageId, account.AccountIdentifier);
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to delete Telegram message {MessageId} from chat {ChatId}. Status: {StatusCode}, Body: {Body}", messageId, account.AccountIdentifier, response.StatusCode, json);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting Telegram message {MessageId} from chat {ChatId}", messageId, account.AccountIdentifier);
+            return false;
+        }
+    }
+
     private static string EscapeHtml(string text)
     {
         return text
