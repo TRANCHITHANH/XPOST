@@ -18,6 +18,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import FacebookAdsDashboard from './pages/FacebookAdsDashboard';
 import CreateAdCampaignWizard from './pages/CreateAdCampaignWizard';
+import TikTokAdsDashboard from './pages/TikTokAdsDashboard';
+import CreateTikTokAdCampaignWizard from './pages/CreateTikTokAdCampaignWizard';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -43,6 +45,8 @@ function App() {
           <Route path="/keywords" element={<Keywords />} />
           <Route path="/facebook-ads" element={<FacebookAdsDashboard />} />
           <Route path="/facebook-ads/create" element={<CreateAdCampaignWizard />} />
+          <Route path="/tiktok-ads" element={<TikTokAdsDashboard />} />
+          <Route path="/tiktok-ads/create" element={<CreateTikTokAdCampaignWizard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin/tenants" element={<Tenants />} />
           <Route path="/settings/company" element={<CompanyProfile />} />

@@ -1558,7 +1558,7 @@ public class SocialAuthController : ControllerBase
     /// Uses PKCE (code_challenge / code_verifier).
     /// </summary>
     [HttpGet("auth/tiktok")]
-    public IActionResult GetTikTokAuthUrl()
+    public IActionResult GetTikTokAuthUrl([FromQuery] string? scopes = null)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
@@ -1571,15 +1571,14 @@ public class SocialAuthController : ControllerBase
         _cache.Set($"tiktok_user_{state}", userId, TimeSpan.FromMinutes(10));
 
         // NOTE: Chỉ request các scope đã được phê duyệt trên TikTok Developer Portal.
-        // Sandbox app có thể dùng video.publish nhưng bài đăng sẽ ở chế độ private (chỉ mình tôi).
-        // Sau khi app được audit, có thể thêm: comment.list,comment.list.manage
-        var scopes = "user.info.basic,video.publish,video.upload,video.list";
+        // Mặc định dùng "user.info.basic" để chắc chắn không bị lỗi scope. Nếu sandbox có thêm "video.publish" thì truyền tham số ?scopes=user.info.basic,video.publish
+        var finalScopes = string.IsNullOrWhiteSpace(scopes) ? "user.info.basic" : scopes;
         var redirectUri = Uri.EscapeDataString(_tiktokSettings.RedirectUri);
 
         var url = "https://www.tiktok.com/v2/auth/authorize/"
                 + $"?client_key={_tiktokSettings.ClientKey}"
                 + $"&response_type=code"
-                + $"&scope={scopes}"
+                + $"&scope={finalScopes}"
                 + $"&redirect_uri={redirectUri}"
                 + $"&state={state}"
                 + $"&code_challenge={codeChallenge}"

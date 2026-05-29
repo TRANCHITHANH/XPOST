@@ -48,6 +48,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<FacebookAdSet> FacebookAdSets { get; set; } = null!;
     public DbSet<FacebookAd> FacebookAds { get; set; } = null!;
     public DbSet<FacebookAdInsight> FacebookAdInsights { get; set; } = null!;
+    public DbSet<TikTokAdAccount> TikTokAdAccounts { get; set; } = null!;
+    public DbSet<TikTokCampaign> TikTokCampaigns { get; set; } = null!;
+    public DbSet<TikTokAdGroup> TikTokAdGroups { get; set; } = null!;
+    public DbSet<TikTokAd> TikTokAds { get; set; } = null!;
+    public DbSet<TikTokAdInsight> TikTokAdInsights { get; set; } = null!;
 
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -69,6 +74,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         builder.Entity<FacebookAdSet>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
         builder.Entity<FacebookAd>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
         builder.Entity<FacebookAdInsight>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<TikTokAdAccount>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<TikTokCampaign>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<TikTokAdGroup>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<TikTokAd>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<TikTokAdInsight>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
 
 
         // ApplicationUser
@@ -412,7 +422,86 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .HasForeignKey(e => e.FacebookAdId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // TikTokAdAccount
+        builder.Entity<TikTokAdAccount>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+        });
+
+        // TikTokCampaign
+        builder.Entity<TikTokCampaign>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.Status).HasDefaultValue("DRAFT");
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne(e => e.AdAccount)
+                .WithMany(a => a.Campaigns)
+                .HasForeignKey(e => e.TikTokAdAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // TikTokAdGroup
+        builder.Entity<TikTokAdGroup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.PlacementType).HasDefaultValue("PLACEMENT_MODE_DEFAULT");
+            entity.Property(e => e.TargetingAgeMin).HasDefaultValue(18);
+            entity.Property(e => e.TargetingAgeMax).HasDefaultValue(65);
+            entity.Property(e => e.TargetingGenders).HasDefaultValue("ALL");
+            entity.Property(e => e.TargetingLocations).HasDefaultValue("VN");
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne(e => e.Campaign)
+                .WithMany(c => c.AdGroups)
+                .HasForeignKey(e => e.TikTokCampaignId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // TikTokAd
+        builder.Entity<TikTokAd>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.CallToAction).HasDefaultValue("LEARN_MORE");
+            entity.Property(e => e.Status).HasDefaultValue("ACTIVE");
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne(e => e.AdGroup)
+                .WithMany(s => s.Ads)
+                .HasForeignKey(e => e.TikTokAdGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // TikTokAdInsight
+        builder.Entity<TikTokAdInsight>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.Impressions).HasDefaultValue(0);
+            entity.Property(e => e.Reach).HasDefaultValue(0);
+            entity.Property(e => e.Clicks).HasDefaultValue(0);
+            entity.Property(e => e.Spend).HasDefaultValue(0);
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne(e => e.Ad)
+                .WithMany(a => a.Insights)
+                .HasForeignKey(e => e.TikTokAdId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
+
 
     public override int SaveChanges()
     {

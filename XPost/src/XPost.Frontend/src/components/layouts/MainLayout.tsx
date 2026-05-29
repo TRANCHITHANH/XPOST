@@ -79,6 +79,7 @@ const menuItems = [
         isDynamicSubItems: true
     },
     { name: 'Facebook Ads', path: '/facebook-ads', icon: Icons.Megaphone },
+    { name: 'TikTok Ads', path: '/tiktok-ads', icon: Icons.Megaphone },
     { name: 'Media Library', path: '/media', icon: Icons.Media },
     { name: 'Analytics', path: '/analytics', icon: Icons.Analytics },
     { name: 'Users', path: '/users', icon: Icons.Users },
