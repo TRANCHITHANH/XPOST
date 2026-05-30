@@ -40,6 +40,8 @@ export default function FacebookAdsDashboard() {
   const [facebookPages, setFacebookPages] = useState<any[]>([]);
   const [selectedPageId, setSelectedPageId] = useState<string>('');
   const [selectedMetric, setSelectedMetric] = useState<'impressions' | 'clicks' | 'ctr' | 'spend'>('impressions');
+  const [selectedConnectionId, setSelectedConnectionId] = useState('');
+  const [useManualToken, setUseManualToken] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [summary, setSummary] = useState<PerformanceSummary>({ impressions: 0, reach: 0, clicks: 0, spend: 0, ctr: 0, cpc: 0 });
   const [chartData, setChartData] = useState<DailyInsight[]>([]);
@@ -80,6 +82,10 @@ export default function FacebookAdsDashboard() {
       if (fbPages.length > 0) {
         const firstPage = fbPages[0];
         setSelectedPageId(firstPage.id);
+        setSelectedConnectionId(firstPage.id);
+        if (firstPage.accessToken) {
+          setAccessTokenInput(firstPage.accessToken);
+        }
         
         // Match by account name
         const matchingAdAcc = adAccsRes.data.find(
@@ -104,6 +110,16 @@ export default function FacebookAdsDashboard() {
       toast.error('Không thể tải danh sách tài khoản');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleConnectionSelect = (connId: string) => {
+    setSelectedConnectionId(connId);
+    const conn = facebookPages.find(p => p.id === connId);
+    if (conn && conn.accessToken) {
+      setAccessTokenInput(conn.accessToken);
+    } else {
+      setAccessTokenInput('');
     }
   };
 
@@ -699,28 +715,79 @@ export default function FacebookAdsDashboard() {
               <div className="relative z-10 flex justify-between items-center">
                 <div>
                   <h3 className="font-black text-white text-xl">Kết nối Meta Marketing</h3>
-                  <p className="text-blue-200/80 text-sm mt-1">Nhập User Access Token để quét tài khoản</p>
+                  <p className="text-blue-200/80 text-sm mt-1">Đồng bộ tài khoản quảng cáo Meta Ads Manager</p>
                 </div>
-                <button onClick={() => { setShowConnectModal(false); setAccessTokenInput(''); setDiscoveredAccounts([]); }} className="p-2 bg-white/15 hover:bg-white/25 text-white rounded-xl transition-all"><X className="w-5 h-5" /></button>
+                <button onClick={() => { setShowConnectModal(false); setAccessTokenInput(facebookPages.length > 0 && facebookPages[0].accessToken ? facebookPages[0].accessToken : ''); setSelectedConnectionId(facebookPages.length > 0 ? facebookPages[0].id : ''); setDiscoveredAccounts([]); setUseManualToken(false); }} className="p-2 bg-white/15 hover:bg-white/25 text-white rounded-xl transition-all"><X className="w-5 h-5" /></button>
               </div>
             </div>
             <div className="p-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Facebook User Access Token</label>
-                <div className="flex gap-2">
-                  <input type="password" placeholder="EAA..." value={accessTokenInput} onChange={e => setAccessTokenInput(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono" />
-                  <button onClick={handleDiscoverAccounts} disabled={isDiscovering} className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-[0_4px_15px_rgba(99,102,241,0.3)] flex items-center gap-2">
-                    {isDiscovering ? <RefreshCw className="w-4 h-4 animate-spin" /> : null} Quét
+              {facebookPages.length > 0 && (
+                <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50">
+                  <button
+                    onClick={() => { setUseManualToken(false); if (facebookPages.length > 0 && facebookPages[0].accessToken) handleConnectionSelect(selectedConnectionId || facebookPages[0].id); }}
+                    className={`flex-1 text-center py-2.5 text-xs font-bold rounded-xl transition-all ${!useManualToken ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                  >
+                    Kết nối tự động (Khuyên dùng)
+                  </button>
+                  <button
+                    onClick={() => { setUseManualToken(true); setAccessTokenInput(''); }}
+                    className={`flex-1 text-center py-2.5 text-xs font-bold rounded-xl transition-all ${useManualToken ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+                  >
+                    Nhập thủ công Token
                   </button>
                 </div>
-                <div className="flex items-start gap-2 text-[11px] text-gray-400 bg-amber-50 border border-amber-100 rounded-xl p-3">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                  <span>Token cần quyền <code className="bg-amber-100 px-1 rounded">ads_management</code> và <code className="bg-amber-100 px-1 rounded">ads_read</code> từ <strong>Meta Graph API Explorer</strong>.</span>
+              )}
+
+              {!useManualToken && facebookPages.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Chọn trang Facebook đã liên kết</label>
+                    <select
+                      value={selectedConnectionId}
+                      onChange={e => handleConnectionSelect(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-gray-800 font-medium"
+                    >
+                      {facebookPages.map(page => (
+                        <option key={page.id} value={page.id}>
+                          🌐 {page.accountName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-[11px] text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
+                    <CheckCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <span>Hệ thống sẽ tự động dùng mã xác thực bảo mật hiện tại của trang này (được cấp từ Quản lý kết nối) để đồng bộ và quét các tài khoản quảng cáo Meta Ads tương ứng.</span>
+                  </div>
+                  <button
+                    onClick={handleDiscoverAccounts}
+                    disabled={isDiscovering}
+                    className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-[0_4px_15px_rgba(99,102,241,0.3)] flex items-center justify-center gap-2"
+                  >
+                    {isDiscovering ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                    Quét tài khoản quảng cáo của tôi
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Facebook User Access Token</label>
+                    <div className="flex gap-2">
+                      <input type="password" placeholder="EAA..." value={accessTokenInput} onChange={e => setAccessTokenInput(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono" />
+                      <button onClick={handleDiscoverAccounts} disabled={isDiscovering} className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-all shadow-[0_4px_15px_rgba(99,102,241,0.3)] flex items-center gap-2">
+                        {isDiscovering ? <RefreshCw className="w-4 h-4 animate-spin" /> : null} Quét
+                      </button>
+                    </div>
+                    <div className="flex items-start gap-2 text-[11px] text-gray-400 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      <span>Token cần quyền <code className="bg-amber-100 px-1 rounded">ads_management</code> và <code className="bg-amber-100 px-1 rounded">ads_read</code> từ <strong>Meta Graph API Explorer</strong>.</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {discoveredAccounts.length > 0 && (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Tài khoản tìm thấy ({discoveredAccounts.length})</label>
+                <div className="space-y-2 max-h-60 overflow-y-auto pt-2 border-t border-gray-100">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Tài khoản quảng cáo tìm thấy ({discoveredAccounts.length})</label>
                   <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
                     {discoveredAccounts.map(acc => (
                       <div key={acc.id} className="flex justify-between items-center p-4 hover:bg-blue-50/50 transition-colors">
