@@ -23,10 +23,23 @@ const OBJECTIVE_LABELS: Record<string, string> = {
   CONVERSIONS: 'Chuyển đổi', REACH: 'Tiếp cận',
 };
 
+const fallbackChartData: DailyInsight[] = [
+  { date: '2026-05-24', impressions: 12500, clicks: 380, reach: 9800, spend: 150000 },
+  { date: '2026-05-25', impressions: 14800, clicks: 490, reach: 11200, spend: 185000 },
+  { date: '2026-05-26', impressions: 18200, clicks: 610, reach: 14000, spend: 220000 },
+  { date: '2026-05-27', impressions: 15600, clicks: 520, reach: 12100, spend: 195000 },
+  { date: '2026-05-28', impressions: 21000, clicks: 730, reach: 16500, spend: 280000 },
+  { date: '2026-05-29', impressions: 24500, clicks: 880, reach: 18900, spend: 320000 },
+  { date: '2026-05-30', impressions: 22000, clicks: 790, reach: 17200, spend: 295000 },
+];
+
 export default function FacebookAdsDashboard() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [facebookPages, setFacebookPages] = useState<any[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string>('');
+  const [selectedMetric, setSelectedMetric] = useState<'impressions' | 'clicks' | 'ctr' | 'spend'>('impressions');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [summary, setSummary] = useState<PerformanceSummary>({ impressions: 0, reach: 0, clicks: 0, spend: 0, ctr: 0, cpc: 0 });
   const [chartData, setChartData] = useState<DailyInsight[]>([]);
@@ -41,12 +54,12 @@ export default function FacebookAdsDashboard() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(() => {
+  const [startDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
     return d.toISOString().split('T')[0];
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => { fetchAccounts(); }, []);
   useEffect(() => { if (selectedAccountId) fetchCampaigns(selectedAccountId); }, [selectedAccountId, startDate, endDate]);
@@ -54,11 +67,64 @@ export default function FacebookAdsDashboard() {
   const fetchAccounts = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/facebookads/accounts');
-      setAccounts(res.data);
-      if (res.data.length > 0) setSelectedAccountId(res.data[0].id);
-      else setIsLoading(false);
-    } catch { toast.error('Không thể tải danh sách tài khoản'); setIsLoading(false); }
+      
+      // 1. Fetch connected Facebook Ad Accounts
+      const adAccsRes = await api.get('/facebookads/accounts');
+      setAccounts(adAccsRes.data);
+      
+      // 2. Fetch Facebook Social Pages from connection manager
+      const socialAccsRes = await api.get('/socialaccounts');
+      const fbPages = socialAccsRes.data.filter((a: any) => a.platform === 1);
+      setFacebookPages(fbPages);
+      
+      if (fbPages.length > 0) {
+        const firstPage = fbPages[0];
+        setSelectedPageId(firstPage.id);
+        
+        // Match by account name
+        const matchingAdAcc = adAccsRes.data.find(
+          (acc: any) => acc.accountName.toLowerCase() === firstPage.accountName.toLowerCase()
+        );
+        
+        if (matchingAdAcc) {
+          setSelectedAccountId(matchingAdAcc.id);
+        } else if (adAccsRes.data.length > 0) {
+          setSelectedAccountId(adAccsRes.data[0].id);
+        } else {
+          setSelectedAccountId('');
+        }
+      } else {
+        if (adAccsRes.data.length > 0) {
+          setSelectedAccountId(adAccsRes.data[0].id);
+        } else {
+          setSelectedAccountId('');
+        }
+      }
+    } catch {
+      toast.error('Không thể tải danh sách tài khoản');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePageChange = (pageId: string) => {
+    setSelectedPageId(pageId);
+    const selectedPage = facebookPages.find(p => p.id === pageId);
+    if (selectedPage) {
+      const matchingAdAcc = accounts.find(
+        (acc: any) => acc.accountName.toLowerCase() === selectedPage.accountName.toLowerCase()
+      );
+      if (matchingAdAcc) {
+        setSelectedAccountId(matchingAdAcc.id);
+      } else {
+        toast.error(`Không tìm thấy Tài khoản Ad Account trùng tên với Page "${selectedPage.accountName}"`);
+        if (accounts.length > 0) {
+          setSelectedAccountId(accounts[0].id);
+        } else {
+          setSelectedAccountId('');
+        }
+      }
+    }
   };
 
   const fetchCampaigns = useCallback(async (accId: string) => {
@@ -79,6 +145,8 @@ export default function FacebookAdsDashboard() {
             if (!dailyMap[day]) dailyMap[day] = { date: day, impressions: 0, clicks: 0, reach: 0, spend: 0 };
             dailyMap[day].impressions += ins.impressions || 0;
             dailyMap[day].clicks += ins.clicks || 0;
+            dailyMap[day].reach += ins.reach || 0;
+            dailyMap[day].spend += Number(ins.spend) || 0;
           }
         } catch { /* skip */ }
       }
@@ -127,8 +195,6 @@ export default function FacebookAdsDashboard() {
     finally { setIsConnecting(false); }
   };
 
-  const maxImp = Math.max(...chartData.map(d => d.impressions), 1);
-  const maxClk = Math.max(...chartData.map(d => d.clicks), 1);
   const formatDay = (dateStr: string) => { try { return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][new Date(dateStr).getDay()]; } catch { return dateStr; } };
   const activeCamps = campaigns.filter(c => c.status === 'ACTIVE').length;
   const pausedCamps = campaigns.filter(c => c.status !== 'ACTIVE').length;
@@ -161,52 +227,47 @@ export default function FacebookAdsDashboard() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Quick stats pills */}
-            <div className="flex gap-2">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-center">
-                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider">Hoạt động</p>
-                <p className="text-white text-xl font-black">{activeCamps}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-center">
-                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider">Tạm dừng</p>
-                <p className="text-white text-xl font-black">{pausedCamps}</p>
-              </div>
-            </div>
-
             <div className="flex items-center gap-2">
-              {accounts.length > 0 && (
+              {facebookPages.length > 0 ? (
                 <div className="relative">
-                  <select value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)} className="appearance-none bg-white/15 backdrop-blur-sm border border-white/25 text-white rounded-xl pl-4 pr-9 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white/30 min-w-[180px]">
-                    {accounts.map(acc => <option key={acc.id} value={acc.id} className="text-gray-900 bg-white">{acc.accountName}</option>)}
+                  <select
+                    value={selectedPageId}
+                    onChange={e => handlePageChange(e.target.value)}
+                    className="appearance-none bg-white/15 backdrop-blur-sm border border-white/25 text-white rounded-xl pl-4 pr-9 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white/30 min-w-[200px]"
+                  >
+                    {facebookPages.map(page => (
+                      <option key={page.id} value={page.id} className="text-gray-900 bg-white">
+                        🌐 {page.accountName}
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-              )}
-              {accounts.length > 0 && (
-                <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/25 text-white rounded-xl px-3 py-2 text-xs font-semibold">
-                  <span className="opacity-70">Từ:</span>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
-                    className="bg-transparent border-none text-white focus:outline-none [color-scheme:dark] w-24 cursor-pointer"
-                  />
-                  <span className="opacity-70">Đến:</span>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="bg-transparent border-none text-white focus:outline-none [color-scheme:dark] w-24 cursor-pointer"
-                  />
-                </div>
+              ) : (
+                accounts.length > 0 && (
+                  <div className="relative">
+                    <select
+                      value={selectedAccountId}
+                      onChange={e => setSelectedAccountId(e.target.value)}
+                      className="appearance-none bg-white/15 backdrop-blur-sm border border-white/25 text-white rounded-xl pl-4 pr-9 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white/30 min-w-[200px]"
+                    >
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id} className="text-gray-900 bg-white">
+                          📊 {acc.accountName}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )
               )}
 
-              {accounts.length > 0 && (
+              {accounts.length > 0 && selectedAccountId !== '' && (
                 <button onClick={handleSync} disabled={isSyncing} className="p-2.5 bg-white/15 hover:bg-white/25 border border-white/25 text-white rounded-xl transition-all backdrop-blur-sm disabled:opacity-50" title="Đồng bộ Meta">
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 </button>
               )}
-              {accounts.length > 0 && (
+              {accounts.length > 0 && selectedAccountId !== '' && (
                 <button onClick={() => navigate('/facebook-ads/create?accountId=' + selectedAccountId)} className="flex items-center gap-2 px-5 py-2.5 bg-white text-blue-700 text-sm font-bold rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all">
                   <Plus className="w-4 h-4" /> Tạo chiến dịch
                 </button>
@@ -215,6 +276,28 @@ export default function FacebookAdsDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── ACCOUNT NOTIFICATION BANNER ── */}
+      {selectedPageId !== '' && selectedAccountId === '' && (
+        <div className="flex items-start gap-4 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 rounded-3xl shadow-sm text-amber-900 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-bold tracking-wide">Chưa kết nối Ad Account với Page này</h4>
+            <p className="text-xs text-amber-700/90 mt-1 leading-relaxed">
+              Trang Facebook này chưa được liên kết với tài khoản quảng cáo Meta Ads Manager nào trên hệ thống. 
+              Hãy nhấn nút **Kết nối ngay** bên dưới để quét & kích hoạt tài khoản quảng cáo tương ứng.
+            </p>
+            <button
+              onClick={() => setShowConnectModal(true)}
+              className="mt-3.5 px-4.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-amber-600/10 hover:shadow-lg"
+            >
+              Kết nối Ad Account ngay
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-gray-100 shadow-sm">
@@ -264,62 +347,125 @@ export default function FacebookAdsDashboard() {
 
           {/* ── CHART ── */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-6 pb-0 flex justify-between items-start">
+            <div className="p-6 pb-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
                     <BarChart2 className="w-4 h-4 text-white" />
                   </div>
                   Hiệu suất theo ngày
+                  {chartData.length === 0 && (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full border border-amber-200 uppercase tracking-wider animate-pulse">
+                      Dữ liệu mẫu
+                    </span>
+                  )}
                 </h3>
                 <p className="text-xs text-gray-400 mt-1.5 ml-10">
-                  {chartData.length > 0 ? `Dữ liệu thực từ Meta API (${chartData.length} ngày gần nhất)` : 'Chưa có insights — Meta cần 24-48h sau khi chiến dịch chạy'}
+                  {chartData.length === 0 
+                    ? 'Hiện đang hiển thị dữ liệu hiệu suất chuẩn hóa để quý khách dễ hình dung'
+                    : `Dữ liệu thực từ Meta API (${chartData.length} ngày gần nhất)`
+                  }
                 </p>
               </div>
-              <div className="flex items-center gap-4 text-xs font-semibold">
-                <span className="flex items-center gap-1.5 text-blue-600"><span className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-sm" />Hiển thị</span>
-                <span className="flex items-center gap-1.5 text-violet-600"><span className="w-3 h-3 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 shadow-sm" />Click</span>
+
+              {/* Metric Selector Tabs */}
+              <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50 self-stretch md:self-auto overflow-x-auto">
+                {[
+                  { id: 'impressions', label: 'Hiển thị', color: 'text-blue-600', activeBg: 'bg-blue-600 text-white shadow-sm' },
+                  { id: 'clicks', label: 'Lượt click', color: 'text-violet-600', activeBg: 'bg-violet-600 text-white shadow-sm' },
+                  { id: 'ctr', label: 'Tỷ lệ CTR', color: 'text-emerald-600', activeBg: 'bg-emerald-600 text-white shadow-sm' },
+                  { id: 'spend', label: 'Chi phí', color: 'text-rose-600', activeBg: 'bg-rose-600 text-white shadow-sm' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedMetric(tab.id as any)}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                      selectedMetric === tab.id 
+                        ? tab.activeBg 
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/60'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {chartData.length === 0 ? (
-              <div className="h-52 flex flex-col items-center justify-center text-center px-6 py-8">
-                <div className="flex gap-1 items-end mb-5 opacity-20">
-                  {[40, 60, 45, 80, 65, 90, 75].map((h, i) => (
-                    <div key={i} className="flex gap-0.5 items-end">
-                      <div style={{ height: h }} className="w-3 bg-blue-300 rounded-t" />
-                      <div style={{ height: h * 0.4 }} className="w-3 bg-violet-300 rounded-t" />
+            {(() => {
+              const activeChartData = chartData.length > 0 ? chartData : fallbackChartData;
+              
+              const getMetricValue = (item: DailyInsight, metric: 'impressions' | 'clicks' | 'ctr' | 'spend') => {
+                if (metric === 'ctr') {
+                  return item.impressions > 0 ? (item.clicks / item.impressions) * 100 : 0;
+                }
+                return item[metric] || 0;
+              };
+
+              const maxVal = Math.max(...activeChartData.map(d => getMetricValue(d, selectedMetric)), 1);
+
+              const metricGradients = {
+                impressions: 'from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 shadow-blue-500/20',
+                clicks: 'from-violet-600 to-violet-400 hover:from-violet-700 hover:to-violet-500 shadow-violet-500/20',
+                ctr: 'from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 shadow-emerald-500/20',
+                spend: 'from-rose-600 to-rose-400 hover:from-rose-700 hover:to-rose-500 shadow-rose-500/20',
+              };
+
+              return (
+                <div className="px-6 pb-6 pt-6">
+                  <div className="relative h-60 flex items-end justify-between gap-1 md:gap-3">
+                    {/* Grid lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8">
+                      {[0, 1, 2, 3].map(i => (
+                        <div key={i} className="w-full border-t border-dashed border-gray-100" />
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <p className="text-sm font-semibold text-gray-400">Chưa có dữ liệu insights</p>
-                <p className="text-xs text-gray-300 mt-1">Meta thường cần 24–48h để cập nhật số liệu sau khi chiến dịch chạy</p>
-              </div>
-            ) : (
-              <div className="px-6 pb-6 pt-4">
-                <div className="relative h-56 flex items-end justify-between gap-1">
-                  {/* Grid lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8">
-                    {[0, 1, 2, 3].map(i => <div key={i} className="w-full border-t border-dashed border-gray-100" />)}
-                  </div>
-                  {chartData.map((item, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 group z-10">
-                      <div className="flex gap-1 items-end h-44 w-full justify-center">
-                        <div style={{ height: `${(item.impressions / maxImp) * 100}%` }} className="w-1/3 max-w-[28px] bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-xl transition-all duration-700 relative cursor-pointer hover:from-blue-700 hover:to-blue-500">
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col bg-gray-900 text-white text-[10px] py-2 px-3 rounded-xl whitespace-nowrap z-50 shadow-2xl gap-0.5">
-                            <span className="font-bold text-blue-300">{formatDay(item.date)} — {item.date}</span>
-                            <span>👁 {item.impressions.toLocaleString()}</span>
-                            <span>🖱 {item.clicks.toLocaleString()}</span>
+
+                    {activeChartData.map((item, idx) => {
+                      const currentVal = getMetricValue(item, selectedMetric);
+                      const pctHeight = (currentVal / maxVal) * 100;
+                      
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-2 group z-10">
+                          <div className="flex items-end h-48 w-full justify-center">
+                            <div 
+                              style={{ height: `${Math.max(pctHeight, 6)}%` }} 
+                              className={`w-full max-w-[36px] bg-gradient-to-t ${metricGradients[selectedMetric]} rounded-t-2xl transition-all duration-500 relative cursor-pointer shadow-lg hover:-translate-y-0.5`}
+                            >
+                              {/* Custom Tooltip */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:flex flex-col bg-gray-950/95 text-white text-[11px] py-3.5 px-4 rounded-2xl whitespace-nowrap z-50 shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 gap-1.5 w-48 transition-all animate-in fade-in duration-200">
+                                <span className="font-extrabold text-gray-200 border-b border-white/10 pb-1.5 mb-0.5 flex items-center justify-between">
+                                  📅 {item.date} 
+                                  <span className="text-[9px] font-black text-gray-400 bg-white/10 px-1.5 py-0.5 rounded">
+                                    {formatDay(item.date)}
+                                  </span>
+                                </span>
+                                <span className="flex items-center justify-between text-blue-300">
+                                  <span>👁 Hiển thị:</span> 
+                                  <span className="font-bold">{item.impressions.toLocaleString('vi-VN')}</span>
+                                </span>
+                                <span className="flex items-center justify-between text-violet-300">
+                                  <span>🖱 Clicks:</span> 
+                                  <span className="font-bold">{item.clicks.toLocaleString('vi-VN')}</span>
+                                </span>
+                                <span className="flex items-center justify-between text-emerald-300">
+                                  <span>🎯 CTR:</span> 
+                                  <span className="font-bold">{((item.clicks / (item.impressions || 1)) * 100).toFixed(2)}%</span>
+                                </span>
+                                <span className="flex items-center justify-between text-rose-300">
+                                  <span>💰 Chi phí:</span> 
+                                  <span className="font-bold">{item.spend.toLocaleString('vi-VN')}đ</span>
+                                </span>
+                              </div>
+                            </div>
                           </div>
+                          <span className="text-[11px] font-bold text-gray-400 uppercase">{formatDay(item.date)}</span>
                         </div>
-                        <div style={{ height: `${(item.clicks / maxClk) * 100}%` }} className="w-1/3 max-w-[28px] bg-gradient-to-t from-violet-600 to-violet-400 rounded-t-xl transition-all duration-700 hover:from-violet-700 hover:to-violet-500 cursor-pointer" />
-                      </div>
-                      <span className="text-[11px] font-bold text-gray-400">{formatDay(item.date)}</span>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* ── CAMPAIGNS TABLE ── */}
