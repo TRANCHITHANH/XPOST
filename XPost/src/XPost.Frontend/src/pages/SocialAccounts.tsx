@@ -335,9 +335,11 @@ export default function SocialAccounts() {
             if (event.data.success && event.data.data) {
                 if (platform === 'facebook') {
                     // Facebook returns a list of pages
-                    setFbPages(event.data.data);
+                    const { pages, userAccessToken } = event.data.data;
+                    setFbPages(pages || []);
+                    setFbUserAccessToken(userAccessToken || '');
+                    setSelectedFbPages(new Set((pages || []).map((p: any) => p.pageId)));
                     setShowFbPageModal(true);
-                    setSelectedFbPages(new Set());
                 } else if (platform === 'zalo') {
                     // Zalo returned OA info
                     const oaList: ZaloOAInfo[] = event.data.data;
