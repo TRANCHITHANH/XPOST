@@ -340,31 +340,52 @@ export default function FacebookAdsDashboard() {
         </div>
       ) : (
         <>
-          {/* ── KPI CARDS ── */}
+          {/* ── KPI CARDS (Interactive Chart Selectors) ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Lượt Hiển Thị', value: summary.impressions.toLocaleString('vi-VN'), sub: `Tiếp cận: ${summary.reach.toLocaleString('vi-VN')}`, icon: <TrendingUp className="w-5 h-5" />, gradient: 'from-blue-500 to-blue-600', glow: 'rgba(59,130,246,0.3)', bg: 'from-blue-50 to-blue-100/50', border: 'border-blue-100' },
-              { label: 'Lượt Click', value: summary.clicks.toLocaleString('vi-VN'), sub: `CPC: ${summary.cpc > 0 ? summary.cpc.toFixed(0) + 'đ' : 'Chưa có'}`, icon: <MousePointerClick className="w-5 h-5" />, gradient: 'from-violet-500 to-purple-600', glow: 'rgba(139,92,246,0.3)', bg: 'from-violet-50 to-purple-50', border: 'border-violet-100' },
-              { label: 'Tỷ Lệ Click (CTR)', value: `${summary.ctr.toFixed(2)}%`, sub: summary.impressions === 0 ? 'Chưa có dữ liệu' : `${summary.impressions.toLocaleString()} impressions`, icon: <Target className="w-5 h-5" />, gradient: 'from-emerald-500 to-teal-600', glow: 'rgba(16,185,129,0.3)', bg: 'from-emerald-50 to-teal-50', border: 'border-emerald-100' },
-              { label: 'Chi Phí (VND)', value: `${summary.spend.toLocaleString('vi-VN')}đ`, sub: 'Meta Billing', icon: <DollarSign className="w-5 h-5" />, gradient: 'from-rose-500 to-pink-600', glow: 'rgba(244,63,94,0.3)', bg: 'from-rose-50 to-pink-50', border: 'border-rose-100' },
-            ].map((card, i) => (
-              <div key={i} className={`relative bg-gradient-to-br ${card.bg} rounded-3xl border ${card.border} p-6 overflow-hidden group hover:-translate-y-1 transition-all duration-300 cursor-default`}>
-                <div className={`absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br ${card.gradient} rounded-full opacity-10 group-hover:opacity-20 transition-opacity`} />
-                <div className="flex items-start justify-between mb-4">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-tight">{card.label}</p>
-                  <div className={`w-9 h-9 bg-gradient-to-br ${card.gradient} rounded-xl flex items-center justify-center text-white shadow-lg`} style={{ boxShadow: `0 4px 15px ${card.glow}` }}>
-                    {card.icon}
+              { id: 'impressions', label: 'Lượt Hiển Thị', value: summary.impressions.toLocaleString('vi-VN'), sub: `Tiếp cận: ${summary.reach.toLocaleString('vi-VN')}`, icon: <TrendingUp className="w-5 h-5" />, gradient: 'from-blue-500 to-blue-600', glow: 'rgba(59,130,246,0.3)', bg: 'from-blue-50 to-blue-100/50', border: 'border-blue-100', activeClass: 'border-blue-500 ring-4 ring-blue-500/10 shadow-blue-500/10' },
+              { id: 'clicks', label: 'Lượt Click', value: summary.clicks.toLocaleString('vi-VN'), sub: `CPC: ${summary.cpc > 0 ? summary.cpc.toFixed(0) + 'đ' : 'Chưa có'}`, icon: <MousePointerClick className="w-5 h-5" />, gradient: 'from-violet-500 to-purple-600', glow: 'rgba(139,92,246,0.3)', bg: 'from-violet-50 to-purple-50', border: 'border-violet-100', activeClass: 'border-purple-500 ring-4 ring-purple-500/10 shadow-purple-500/10' },
+              { id: 'ctr', label: 'Tỷ Lệ Click (CTR)', value: `${summary.ctr.toFixed(2)}%`, sub: summary.impressions === 0 ? 'Chưa có dữ liệu' : `${summary.impressions.toLocaleString()} impressions`, icon: <Target className="w-5 h-5" />, gradient: 'from-emerald-500 to-teal-600', glow: 'rgba(16,185,129,0.3)', bg: 'from-emerald-50 to-teal-50', border: 'border-emerald-100', activeClass: 'border-emerald-500 ring-4 ring-emerald-500/10 shadow-emerald-500/10' },
+              { id: 'spend', label: 'Chi Phí (VND)', value: `${summary.spend.toLocaleString('vi-VN')}đ`, sub: 'Meta Billing', icon: <DollarSign className="w-5 h-5" />, gradient: 'from-rose-500 to-pink-600', glow: 'rgba(244,63,94,0.3)', bg: 'from-rose-50 to-pink-50', border: 'border-rose-100', activeClass: 'border-rose-500 ring-4 ring-rose-500/10 shadow-rose-500/10' },
+            ].map((card, i) => {
+              const isSelected = selectedMetric === card.id;
+              return (
+                <div 
+                  key={i} 
+                  onClick={() => setSelectedMetric(card.id as any)}
+                  className={`relative bg-gradient-to-br ${card.bg} rounded-3xl border-2 p-6 overflow-hidden group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer ${
+                    isSelected ? `${card.activeClass} scale-[1.02] shadow-lg` : `${card.border} hover:border-gray-200`
+                  }`}
+                >
+                  {/* Glowing Pulse Dot for Active Card */}
+                  {isSelected && (
+                    <div className="absolute top-4 left-4 flex h-2 w-2 z-20">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        card.id === 'impressions' ? 'bg-blue-400' : card.id === 'clicks' ? 'bg-violet-400' : card.id === 'ctr' ? 'bg-emerald-400' : 'bg-rose-400'
+                      }`}></span>
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                        card.id === 'impressions' ? 'bg-blue-500' : card.id === 'clicks' ? 'bg-violet-500' : card.id === 'ctr' ? 'bg-emerald-500' : 'bg-rose-500'
+                      }`}></span>
+                    </div>
+                  )}
+                  
+                  <div className={`absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br ${card.gradient} rounded-full opacity-10 group-hover:opacity-20 transition-opacity`} />
+                  <div className="flex items-start justify-between mb-4">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-tight pl-3">{card.label}</p>
+                    <div className={`w-9 h-9 bg-gradient-to-br ${card.gradient} rounded-xl flex items-center justify-center text-white shadow-lg`} style={{ boxShadow: `0 4px 15px ${card.glow}` }}>
+                      {card.icon}
+                    </div>
                   </div>
+                  <p className="text-3xl font-black text-gray-900 leading-none">{card.value}</p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">{card.sub}</p>
                 </div>
-                <p className="text-3xl font-black text-gray-900 leading-none">{card.value}</p>
-                <p className="text-xs text-gray-500 mt-2 font-medium">{card.sub}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* ── CHART ── */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative">
-            <div className="p-6 pb-0 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+            <div className="p-6 pb-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex-1">
                 <h3 className="text-lg font-black text-gray-900 flex items-center gap-2 flex-wrap">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shrink-0">
@@ -381,7 +402,7 @@ export default function FacebookAdsDashboard() {
                       }[selectedMetric];
                       const modeLabel = {
                         day: 'Toàn cảnh Hiệu suất theo Ngày',
-                        month: 'Phân tích Xu xu hướng theo Tháng',
+                        month: 'Phân tích Xu hướng theo Tháng',
                         year: 'Chiến lược Tăng trưởng theo Năm'
                       }[chronosMode];
                       return `${modeLabel} (${metricLabel})`;
@@ -406,7 +427,7 @@ export default function FacebookAdsDashboard() {
               </div>
 
               {/* Chronos Analytics Switcher: Hierarchical Segment Control */}
-              <div className="flex bg-slate-100/80 backdrop-blur-md p-1 rounded-2xl border border-slate-200/50 self-stretch xl:self-auto gap-1">
+              <div className="flex bg-slate-100/80 backdrop-blur-md p-1 rounded-2xl border border-slate-200/50 self-stretch md:self-auto gap-1">
                 {[
                   { id: 'day', label: 'Theo Ngày', icon: <Calendar className="w-3.5 h-3.5" /> },
                   { id: 'month', label: 'Theo Tháng', icon: <TrendingUp className="w-3.5 h-3.5" /> },
@@ -423,28 +444,6 @@ export default function FacebookAdsDashboard() {
                   >
                     {mode.icon}
                     <span>{mode.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Metric Selector Tabs */}
-              <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200/50 self-stretch xl:self-auto overflow-x-auto gap-1">
-                {[
-                  { id: 'impressions', label: 'Hiển thị', activeBg: 'bg-blue-600 text-white shadow-sm' },
-                  { id: 'clicks', label: 'Lượt click', activeBg: 'bg-violet-600 text-white shadow-sm' },
-                  { id: 'ctr', label: 'Tỷ lệ CTR', activeBg: 'bg-emerald-600 text-white shadow-sm' },
-                  { id: 'spend', label: 'Chi phí', activeBg: 'bg-rose-600 text-white shadow-sm' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setSelectedMetric(tab.id as any)}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                      selectedMetric === tab.id 
-                        ? tab.activeBg 
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/60'
-                    }`}
-                  >
-                    {tab.label}
                   </button>
                 ))}
               </div>
