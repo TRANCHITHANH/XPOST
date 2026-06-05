@@ -15,6 +15,7 @@ public class FacebookAd : BaseEntity, IMultiTenant
     public string DestinationUrl { get; set; } = string.Empty;
     public string CallToAction { get; set; } = "LEARN_MORE";
     public string Status { get; set; } = "ACTIVE";
+    public string? FacebookPostId { get; set; }
 
     // Navigation properties
     public FacebookAdSet AdSet { get; set; } = null!;
