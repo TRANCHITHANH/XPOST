@@ -408,7 +408,23 @@ export default function SocialAccounts() {
     }, []);
 
     // ── Connect handlers ──
+    const showNgrokWarning = () => {
+        toast('Nếu gặp trang cảnh báo ngrok khi liên kết tài khoản, vui lòng chọn "Visit Site" để tiếp tục.', {
+            icon: 'ℹ️',
+            duration: 8000,
+            style: {
+                maxWidth: '450px',
+                background: '#fff',
+                color: '#334155',
+                border: '1px solid #e2e8f0',
+                fontWeight: 'bold',
+                fontSize: '13px'
+            }
+        });
+    };
+
     const connectFacebook = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/facebook');
             const { url } = res.data;
@@ -440,6 +456,7 @@ export default function SocialAccounts() {
     };
 
     const connectZalo = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/zalo');
             const { url } = res.data;
@@ -469,6 +486,7 @@ export default function SocialAccounts() {
     };
 
     const connectTwitter = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/twitter');
             const { url } = res.data;
@@ -498,6 +516,7 @@ export default function SocialAccounts() {
     };
 
     const connectBlogger = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/blogger');
             const { url } = res.data;
@@ -511,6 +530,7 @@ export default function SocialAccounts() {
     };
 
     const connectInstagram = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/instagram');
             const { url } = res.data;
@@ -523,6 +543,7 @@ export default function SocialAccounts() {
         }
     };
     const connectThreads = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/threads');
             const { url } = res.data;
@@ -571,6 +592,7 @@ export default function SocialAccounts() {
     };
 
     const connectLinkedIn = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/linkedin');
             const { url } = res.data;
@@ -600,6 +622,7 @@ export default function SocialAccounts() {
     };
 
     const connectTikTok = async () => {
+        showNgrokWarning();
         try {
             const res = await api.get('/social/auth/tiktok');
             const { url } = res.data;
@@ -1072,8 +1095,8 @@ export default function SocialAccounts() {
                             {fbPages.map(page => (
                                 <label key={page.pageId}
                                     className={`flex items-center gap-4 p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFbPages.has(page.pageId)
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-100 hover:border-gray-200'
+                                            ? 'border-blue-500 bg-slate-500/10'
+                                            : 'border-gray-100 hover:border-gray-200 hover:bg-slate-500/5'
                                         }`}
                                 >
                                     <input
@@ -1144,7 +1167,7 @@ export default function SocialAccounts() {
                         </div>
 
                         <div className="p-6">
-                            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-blue-500 bg-blue-50">
+                            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-blue-500 bg-slate-500/10">
                                 {zaloOAInfo.avatarUrl ? (
                                     <img src={zaloOAInfo.avatarUrl} alt={zaloOAInfo.oaName} className="w-14 h-14 rounded-xl object-cover shadow-sm" />
                                 ) : (
@@ -1200,7 +1223,7 @@ export default function SocialAccounts() {
                         </div>
 
                         <div className="p-6">
-                            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-900 bg-gray-50">
+                            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-900 bg-slate-500/10">
                                 {twitterInfo.avatarUrl ? (
                                     <img src={twitterInfo.avatarUrl} alt={twitterInfo.accountName} className="w-14 h-14 rounded-full object-cover shadow-sm" />
                                 ) : (
@@ -1256,7 +1279,7 @@ export default function SocialAccounts() {
                         </div>
 
                         <div className="p-6">
-                            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-blue-600 bg-blue-50">
+                            <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-blue-600 bg-slate-500/10">
                                 {linkedInInfo.avatarUrl ? (
                                     <img src={linkedInInfo.avatarUrl} alt={linkedInInfo.accountName} className="w-14 h-14 rounded-full object-cover shadow-sm" />
                                 ) : (

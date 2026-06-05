@@ -363,7 +363,14 @@ export default function PostList() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div className="flex justify-end gap-2">
+                                            <div className="flex justify-end gap-2 items-center">
+                                                <button
+                                                    onClick={() => navigate(`/facebook-ads/create?postTitle=${encodeURIComponent(post.title || '')}&postContent=${encodeURIComponent(post.content || '')}&postImage=${encodeURIComponent(resolveFileUrl(post.featuredImageUrl))}`)}
+                                                    className="text-indigo-600 hover:text-indigo-900 px-2 py-1 hover:bg-indigo-50 rounded-lg border border-indigo-100 transition-colors font-bold text-xs"
+                                                    title="Chạy quảng cáo Facebook Ads cho bài viết này"
+                                                >
+                                                    ⚡ Chạy Ads
+                                                </button>
                                                 <button onClick={() => navigate(`/posts/edit/${post.id}`)} className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors">
                                                     Sửa
                                                 </button>

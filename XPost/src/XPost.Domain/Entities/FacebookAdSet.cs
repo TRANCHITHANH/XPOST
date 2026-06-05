@@ -18,6 +18,7 @@ public class FacebookAdSet : BaseEntity, IMultiTenant
     public string TargetingLocations { get; set; } = "VN";
     public string TargetingInterests { get; set; } = string.Empty; // JSON list of interests
     public string Placements { get; set; } = "AUTOMATIC"; // AUTOMATIC, MANUAL
+    public string Status { get; set; } = "DRAFT";
 
     // Navigation properties
     public FacebookCampaign Campaign { get; set; } = null!;

@@ -17,10 +17,17 @@ public interface IFacebookAdsService
     Task<FacebookCampaign> CreateCampaignAsync(Guid adAccountId, CreateFacebookCampaignDto dto, CancellationToken cancellationToken = default);
     
     Task<bool> ToggleCampaignStatusAsync(Guid campaignId, string status, CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteCampaignAsync(Guid campaignId, CancellationToken cancellationToken = default);
+    
+    Task<bool> CheckPaymentMethodAsync(Guid adAccountId, CancellationToken cancellationToken = default);
+    
+    Task<FacebookCampaign> SyncOrPublishCampaignAsync(Guid campaignId, string targetStatus, CancellationToken cancellationToken = default);
     
     Task SyncInsightsAsync(Guid adAccountId, CancellationToken cancellationToken = default);
     
     Task<List<FacebookAdInsightDto>> GetCampaignInsightsAsync(Guid campaignId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+    Task<List<FacebookPagePostDto>> GetFacebookPagePostsAsync(string pageIdentifier, CancellationToken cancellationToken = default);
 }
 
 public class FacebookAdAccountDto
@@ -41,6 +48,12 @@ public class CreateFacebookCampaignDto
     public DateTime StartTimeUtc { get; set; } = DateTime.UtcNow;
     public DateTime? EndTimeUtc { get; set; }
 
+    // Existing Campaign / Ad Set flow controls
+    public Guid? CampaignId { get; set; }
+    public Guid? AdSetId { get; set; }
+    public string AdSetMode { get; set; } = "create"; // create, existing
+    public string AdMode { get; set; } = "create"; // create, skip
+
     // Ad Set targeting & setup
     public string AdSetName { get; set; } = string.Empty;
     public string BillingEvent { get; set; } = "IMPRESSIONS"; // IMPRESSIONS, LINK_CLICKS
@@ -58,6 +71,7 @@ public class CreateFacebookCampaignDto
     public string MediaUrl { get; set; } = string.Empty;
     public string DestinationUrl { get; set; } = string.Empty;
     public string CallToAction { get; set; } = "LEARN_MORE"; // LEARN_MORE, SHOP_NOW, SIGN_UP, etc.
+    public string? FacebookPostId { get; set; }
 }
 
 public class FacebookAdInsightDto
@@ -71,4 +85,15 @@ public class FacebookAdInsightDto
     public double Ctr => Impressions > 0 ? (double)Clicks / Impressions * 100 : 0;
     public decimal Cpc => Clicks > 0 ? Spend / Clicks : 0;
     public DateTime Date { get; set; }
+}
+
+public class FacebookPagePostDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string FacebookPostId { get; set; } = string.Empty;
+    public string FullId { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string CreatedTime { get; set; } = string.Empty;
+    public string FullPicture { get; set; } = string.Empty;
+    public string PermalinkUrl { get; set; } = string.Empty;
 }

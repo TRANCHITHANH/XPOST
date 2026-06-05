@@ -320,9 +320,10 @@ export default function MainLayout() {
                                                 <NavLink 
                                                     to={item.path}
                                                     className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
-                                                        ${isActive && location.pathname === item.path ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                                                        ${isActive && location.pathname === item.path ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-blue-600 hover:bg-black/5'}`}
                                                     end
                                                 >
+                                                    {location.pathname === item.path && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />}
                                                     <Settings className="w-4 h-4 text-gray-400" />
                                                     Quản lý kết nối
                                                 </NavLink>
@@ -331,13 +332,15 @@ export default function MainLayout() {
                                                 {connectedAccounts.map((account: any) => {
                                                     const subPath = `${item.path}/${account.id}/manage`;
                                                     const config = getPlatformConfig(account.platform);
+                                                    const isSubActive = location.pathname === subPath;
                                                     return (
                                                         <NavLink 
                                                             key={account.id} 
                                                             to={subPath}
                                                             className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
-                                                                ${isActive ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                                                                ${isActive ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-blue-600 hover:bg-black/5'}`}
                                                         >
+                                                            {isSubActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />}
                                                             <div className={config.color}>{config.icon}</div>
                                                             <span className="truncate max-w-[120px]">{account.accountName}</span>
                                                         </NavLink>
@@ -385,16 +388,17 @@ export default function MainLayout() {
                                         {expandedMenus.includes(item.name) && !isSidebarCollapsed && (
                                             <div className="flex flex-col gap-1 pl-9 mt-1 mb-2">
                                                 {(item.subItems as any[]).map((sub) => (
-                                                    <NavLink 
-                                                        key={sub.name} 
-                                                        to={sub.path}
-                                                        className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
-                                                            ${isActive ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
-                                                    >
-                                                        <div className={sub.color}>{sub.icon}</div>
-                                                        <span className="truncate">{sub.name}</span>
-                                                    </NavLink>
-                                                ))}
+                                                     <NavLink 
+                                                         key={sub.name} 
+                                                         to={sub.path}
+                                                         className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
+                                                             ${isActive ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-blue-600 hover:bg-black/5'}`}
+                                                     >
+                                                         {location.pathname === sub.path && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />}
+                                                         <div className={sub.color}>{sub.icon}</div>
+                                                         <span className="truncate">{sub.name}</span>
+                                                     </NavLink>
+                                                 ))}
                                             </div>
                                         )}
                                     </>

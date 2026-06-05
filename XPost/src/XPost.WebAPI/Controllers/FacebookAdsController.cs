@@ -110,6 +110,7 @@ public class FacebookAdsController : ControllerBase
             c.Budget,
             c.StartTimeUtc,
             c.EndTimeUtc,
+            c.PageId,
             c.CreatedAt,
             c.UpdatedAt,
             adAccount = c.AdAccount == null ? null : new
@@ -174,29 +175,80 @@ public class FacebookAdsController : ControllerBase
         }
     }
 
+    [HttpPost("campaigns/{id}/sync-publish")]
+    public async Task<IActionResult> SyncOrPublishCampaign(Guid id, [FromBody] SyncPublishRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrEmpty(request.TargetStatus))
+            return BadRequest(new { message = "TargetStatus is required." });
+
+        try
+        {
+            var campaign = await _adsService.SyncOrPublishCampaignAsync(id, request.TargetStatus, ct);
+            return Ok(new
+            {
+                campaign.Id,
+                campaign.MetaCampaignId,
+                campaign.Name,
+                campaign.Status,
+                campaign.Budget,
+                campaign.StartTimeUtc,
+                campaign.EndTimeUtc
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("accounts/{id}/payment-status")]
+    public async Task<IActionResult> GetAccountPaymentStatus(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var hasPayment = await _adsService.CheckPaymentMethodAsync(id, ct);
+            var account = await _dbContext.FacebookAdAccounts.FindAsync(new object[] { id }, ct);
+            return Ok(new
+            {
+                AdAccountId = id,
+                HasPaymentMethod = hasPayment,
+                FundingSource = account?.FundingSource ?? "",
+                BusinessManagerName = account?.BusinessManagerName ?? ""
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("campaigns/{id}")]
     public async Task<IActionResult> DeleteCampaign(Guid id, CancellationToken ct)
     {
-        // Use IgnoreQueryFilters to bypass TenantId global filter
-        var campaign = await _dbContext.FacebookCampaigns
-            .IgnoreQueryFilters()
-            .Include(x => x.AdSets)
-                .ThenInclude(x => x.Ads)
-            .FirstOrDefaultAsync(x => x.Id == id, ct);
-
-        if (campaign == null)
+        var success = await _adsService.DeleteCampaignAsync(id, ct);
+        if (!success)
             return NotFound(new { message = $"Campaign {id} not found." });
 
-        // Remove all nested ads and adsets
-        foreach (var adSet in campaign.AdSets)
-        {
-            _dbContext.FacebookAds.RemoveRange(adSet.Ads);
-        }
-        _dbContext.FacebookAdSets.RemoveRange(campaign.AdSets);
-        _dbContext.FacebookCampaigns.Remove(campaign);
-        await _dbContext.SaveChangesAsync(ct);
-
         return Ok(new { message = "Campaign deleted successfully.", id });
+    }
+
+    [HttpGet("pages/{pageIdentifier}/posts")]
+    public async Task<IActionResult> GetFacebookPagePosts(string pageIdentifier, CancellationToken ct)
+    {
+        try
+        {
+            var posts = await _adsService.GetFacebookPagePostsAsync(pageIdentifier, ct);
+            return Ok(posts);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    public class SyncPublishRequest
+    {
+        public string TargetStatus { get; set; } = string.Empty;
     }
 
     [HttpPost("accounts/{id}/sync")]

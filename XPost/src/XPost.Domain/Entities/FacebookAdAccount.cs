@@ -10,6 +10,9 @@ public class FacebookAdAccount : BaseEntity, IMultiTenant
     public string AccountName { get; set; } = string.Empty;
     public string AccessToken { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public bool HasPaymentMethod { get; set; } = true;
+    public string? BusinessManagerName { get; set; }
+    public string? FundingSource { get; set; }
 
     // Navigation properties
     public ICollection<FacebookCampaign> Campaigns { get; set; } = new List<FacebookCampaign>();

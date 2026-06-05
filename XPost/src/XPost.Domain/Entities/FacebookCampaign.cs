@@ -11,6 +11,7 @@ public class FacebookCampaign : BaseEntity, IMultiTenant
     public string Name { get; set; } = string.Empty;
     public string Objective { get; set; } = string.Empty;
     public string Status { get; set; } = "DRAFT";
+    public string? PageId { get; set; }
     public decimal Budget { get; set; }
     public DateTime StartTimeUtc { get; set; }
     public DateTime? EndTimeUtc { get; set; }
