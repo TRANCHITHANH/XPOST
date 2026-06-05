@@ -881,6 +881,50 @@ public class FacebookAdsService : IFacebookAdsService
         return true;
     }
 
+    public async Task<bool> DeleteAdSetAsync(Guid adSetId, CancellationToken cancellationToken = default)
+    {
+        var adSet = await _dbContext.FacebookAdSets
+            .IgnoreQueryFilters()
+            .Include(x => x.Ads)
+            .Include(x => x.Campaign)
+                .ThenInclude(c => c.AdAccount)
+            .FirstOrDefaultAsync(x => x.Id == adSetId, cancellationToken);
+
+        if (adSet == null)
+            return false;
+
+        if (!string.IsNullOrEmpty(adSet.MetaAdSetId) && 
+            !adSet.MetaAdSetId.StartsWith("draft_adset_") && 
+            !adSet.MetaAdSetId.StartsWith("mock_adset_") &&
+            adSet.Campaign?.AdAccount != null && 
+            !string.IsNullOrEmpty(adSet.Campaign.AdAccount.AccessToken))
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var deleteUrl = $"{GraphApiBase}/{adSet.MetaAdSetId}?access_token={adSet.Campaign.AdAccount.AccessToken}";
+                var response = await client.DeleteAsync(deleteUrl, cancellationToken);
+                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to delete ad set {MetaId} from Meta. Status: {Status}. Response: {Response}", 
+                        adSet.MetaAdSetId, response.StatusCode, responseJson);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting ad set {MetaId} from Meta", adSet.MetaAdSetId);
+            }
+        }
+
+        _dbContext.FacebookAds.RemoveRange(adSet.Ads);
+        _dbContext.FacebookAdSets.Remove(adSet);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        
+        return true;
+    }
+
     public async Task SyncInsightsAsync(Guid adAccountId, CancellationToken cancellationToken = default)
     {
         var account = await _dbContext.FacebookAdAccounts.FindAsync(new object[] { adAccountId }, cancellationToken);

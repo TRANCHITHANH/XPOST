@@ -232,6 +232,50 @@ public class FacebookAdsController : ControllerBase
         return Ok(new { message = "Campaign deleted successfully.", id });
     }
 
+    [HttpDelete("adsets/{id}")]
+    public async Task<IActionResult> DeleteAdSet(Guid id, CancellationToken ct)
+    {
+        var success = await _adsService.DeleteAdSetAsync(id, ct);
+        if (!success)
+            return NotFound(new { message = $"Ad Set {id} not found." });
+
+        return Ok(new { message = "Ad Set deleted successfully.", id });
+    }
+
+    [HttpPost("adsets/bulk-delete")]
+    public async Task<IActionResult> BulkDeleteAdSets([FromBody] List<Guid> ids, CancellationToken ct)
+    {
+        if (ids == null || ids.Count == 0)
+            return BadRequest(new { message = "Ids must not be empty." });
+
+        var succeededIds = new List<Guid>();
+        var failedIds = new List<Guid>();
+
+        foreach (var id in ids)
+        {
+            try
+            {
+                var success = await _adsService.DeleteAdSetAsync(id, ct);
+                if (success)
+                    succeededIds.Add(id);
+                else
+                    failedIds.Add(id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to delete ad set {id}: {ex.Message}");
+                failedIds.Add(id);
+            }
+        }
+
+        return Ok(new 
+        { 
+            message = $"Bulk delete completed: {succeededIds.Count} succeeded, {failedIds.Count} failed.", 
+            succeededIds, 
+            failedIds 
+        });
+    }
+
     [HttpGet("pages/{pageIdentifier}/posts")]
     public async Task<IActionResult> GetFacebookPagePosts(string pageIdentifier, CancellationToken ct)
     {

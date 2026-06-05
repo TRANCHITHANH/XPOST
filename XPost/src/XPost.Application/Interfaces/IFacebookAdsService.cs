@@ -20,6 +20,8 @@ public interface IFacebookAdsService
 
     Task<bool> DeleteCampaignAsync(Guid campaignId, CancellationToken cancellationToken = default);
     
+    Task<bool> DeleteAdSetAsync(Guid adSetId, CancellationToken cancellationToken = default);
+    
     Task<bool> CheckPaymentMethodAsync(Guid adAccountId, CancellationToken cancellationToken = default);
     
     Task<FacebookCampaign> SyncOrPublishCampaignAsync(Guid campaignId, string targetStatus, CancellationToken cancellationToken = default);

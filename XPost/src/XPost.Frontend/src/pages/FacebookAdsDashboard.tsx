@@ -324,6 +324,13 @@ export default function FacebookAdsDashboard() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [detailCampaign, setDetailCampaign] = useState<Campaign | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedAdSetIds, setSelectedAdSetIds] = useState<string[]>([]);
+  const [isDeletingAdSets, setIsDeletingAdSets] = useState(false);
+
+  useEffect(() => {
+    setSelectedAdSetIds([]);
+  }, [detailCampaign]);
+
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [xpostPosts, setXpostPosts] = useState<any[]>([]);
   const [modalSelectedPostId, setModalSelectedPostId] = useState<string>('');
@@ -816,8 +823,83 @@ export default function FacebookAdsDashboard() {
       setDeletingId(null);
     } catch (err: any) {
       setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+setCampaigns(prev => prev.filter(c => c.id !== campaignId));
       toast.success('Đã xóa chiến dịch thành công', { id: 'del' });
       setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAdSet = async (adSetId: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa nhóm quảng cáo này khỏi cả XPost và Facebook Ads Manager không?")) {
+      return;
+    }
+    try {
+      toast.loading('Đang xóa nhóm quảng cáo...', { id: 'del-adset' });
+      await api.delete(`/facebookads/adsets/${adSetId}`);
+      toast.success('Đã xóa nhóm quảng cáo thành công!', { id: 'del-adset' });
+      
+      // Update local state detailCampaign
+      setDetailCampaign(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          adSets: prev.adSets?.filter(a => a.id !== adSetId) || []
+        };
+      });
+
+      // Update campaigns list
+      setCampaigns(prev => prev.map(c => {
+        if (c.id === detailCampaign?.id) {
+          return {
+            ...c,
+            adSets: c.adSets?.filter(a => a.id !== adSetId) || []
+          };
+        }
+        return c;
+      }));
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || '';
+      toast.error(`Lỗi khi xóa nhóm quảng cáo: ${msg}`, { id: 'del-adset' });
+    }
+  };
+
+  const handleBulkDeleteAdSets = async () => {
+    if (selectedAdSetIds.length === 0) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedAdSetIds.length} nhóm quảng cáo đã chọn khỏi cả XPost và Facebook Ads Manager không?`)) {
+      return;
+    }
+    try {
+      setIsDeletingAdSets(true);
+      toast.loading(`Đang xóa ${selectedAdSetIds.length} nhóm quảng cáo...`, { id: 'del-adsets' });
+      await api.post('/facebookads/adsets/bulk-delete', selectedAdSetIds);
+      toast.success('Đã xóa các nhóm quảng cáo thành công!', { id: 'del-adsets' });
+      
+      // Update local state detailCampaign
+      setDetailCampaign(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          adSets: prev.adSets?.filter(a => !selectedAdSetIds.includes(a.id)) || []
+        };
+      });
+
+      // Update campaigns list
+      setCampaigns(prev => prev.map(c => {
+        if (c.id === detailCampaign?.id) {
+          return {
+            ...c,
+            adSets: c.adSets?.filter(a => !selectedAdSetIds.includes(a.id)) || []
+          };
+        }
+        return c;
+      }));
+
+      setSelectedAdSetIds([]);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || '';
+      toast.error(`Lỗi khi xóa hàng loạt nhóm quảng cáo: ${msg}`, { id: 'del-adsets' });
+    } finally {
+      setIsDeletingAdSets(false);
     }
   };
 
@@ -2752,53 +2834,91 @@ export default function FacebookAdsDashboard() {
                   {/* Ad Sets mapping details */}
                   {detailCampaign.adSets && detailCampaign.adSets.length > 0 && (
                     <div className="space-y-3.5">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Danh sách Nhóm Quảng Cáo (Ad Sets)</h4>
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Danh sách Nhóm Quảng Cáo (Ad Sets)</h4>
+                        {selectedAdSetIds.length > 0 && (
+                          <button
+                            onClick={handleBulkDeleteAdSets}
+                            disabled={isDeletingAdSets}
+                            className="px-3 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-[10px] font-black rounded-lg transition-all flex items-center gap-1 shadow-sm"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa các nhóm đã chọn ({selectedAdSetIds.length})</span>
+                          </button>
+                        )}
+                      </div>
 
-                      {detailCampaign.adSets.map(adSet => (
-                        <div key={adSet.id} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-sm font-black text-slate-800">{adSet.name}</p>
-                              <p className="text-[9px] text-slate-400 font-mono mt-0.5">Meta ID: {adSet.metaAdSetId}</p>
+                      {detailCampaign.adSets.map(adSet => {
+                        const isChecked = selectedAdSetIds.includes(adSet.id);
+                        return (
+                          <div key={adSet.id} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="flex items-start gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedAdSetIds(prev => [...prev, adSet.id]);
+                                    } else {
+                                      setSelectedAdSetIds(prev => prev.filter(id => id !== adSet.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-blue-600 rounded border-slate-350 focus:ring-blue-500 mt-1 cursor-pointer"
+                                />
+                                <div>
+                                  <p className="text-sm font-black text-slate-800">{adSet.name}</p>
+                                  <p className="text-[9px] text-slate-400 font-mono mt-0.5">Meta ID: {adSet.metaAdSetId}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-black rounded-xl">
+                                  {adSet.dailyBudget?.toLocaleString('vi-VN')}đ / ngày
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteAdSet(adSet.id)}
+                                  className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-700 rounded transition-all"
+                                  title="Xóa nhóm quảng cáo"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <span className="px-3 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-black rounded-xl">
-                              {adSet.dailyBudget?.toLocaleString('vi-VN')}đ / ngày
-                            </span>
-                          </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg font-bold">Tuổi: {adSet.targetingAgeMin} – {adSet.targetingAgeMax}</span>
-                            <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg font-bold">Vị trí: {adSet.targetingLocations}</span>
-                            <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg font-bold">Thanh toán: {adSet.billingEvent}</span>
-                          </div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg font-bold">Tuổi: {adSet.targetingAgeMin} – {adSet.targetingAgeMax}</span>
+                              <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg font-bold">Vị trí: {adSet.targetingLocations}</span>
+                              <span className="text-[10px] bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg font-bold">Thanh toán: {adSet.billingEvent}</span>
+                            </div>
 
-                          {/* Ads cards inside Ad Set */}
-                          {adSet.ads && adSet.ads.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mẫu quảng cáo sáng tạo (Creative Ads)</p>
-                              {adSet.ads.map(ad => (
-                                <div key={ad.id} className="bg-white border border-slate-200 rounded-2xl p-3 flex gap-3 items-center">
-                                  <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 border border-slate-200 overflow-hidden">
-                                    {ad.mediaUrl ? (
-                                      <img src={ad.mediaUrl} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                      <Zap className="w-6 h-6 text-slate-300" />
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black text-slate-800 truncate">{ad.name}</p>
-                                    <p className="text-[10px] text-slate-400 truncate mt-0.5">{ad.title || 'Mẫu QC XPost'}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-green-50 text-green-700 uppercase tracking-wider">{ad.status}</span>
-                                      <span className="text-[9px] font-black text-slate-400">CTA: {ad.callToAction}</span>
+                            {/* Ads cards inside Ad Set */}
+                            {adSet.ads && adSet.ads.length > 0 && (
+                              <div className="space-y-2 mt-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mẫu quảng cáo sáng tạo (Creative Ads)</p>
+                                {adSet.ads.map(ad => (
+                                  <div key={ad.id} className="bg-white border border-slate-200 rounded-2xl p-3 flex gap-3 items-center">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 border border-slate-200 overflow-hidden">
+                                      {ad.mediaUrl ? (
+                                        <img src={ad.mediaUrl} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <Zap className="w-6 h-6 text-slate-300" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-black text-slate-800 truncate">{ad.name}</p>
+                                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{ad.title || 'Mẫu QC XPost'}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-green-50 text-green-700 uppercase tracking-wider">{ad.status}</span>
+                                        <span className="text-[9px] font-black text-slate-400">CTA: {ad.callToAction}</span>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
