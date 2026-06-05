@@ -7,8 +7,8 @@ const resolveFileUrl = (url?: string | null) => {
   if (!url) return '';
   let resolved = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   if (resolved.includes('ngrok-free.dev') && !import.meta.env.PROD) {
-    const localApi = window.location.hostname === 'local.xpost.com' 
-      ? 'http://local-api.xpost.com:5243' 
+    const localApi = window.location.hostname === 'local.xpost.com'
+      ? 'http://local-api.xpost.com:5243'
       : 'http://localhost:5243';
     return resolved.replace(/^https:\/\/.*?\.ngrok-free\.dev/i, localApi);
   }
@@ -274,7 +274,7 @@ export default function CreateAdCampaignWizard() {
   const [shareBudget, setShareBudget] = useState(false);
   const [hideBudget, setHideBudget] = useState(false);
   const [existingCampaignName, setExistingCampaignName] = useState<string | null>(null);
-  
+
   // Ad Set & Ad Creative selection modes (new vs existing)
   const [adSetMode, setAdSetMode] = useState<'create' | 'existing'>('create');
   const [adMode, setAdMode] = useState<'create' | 'existing' | 'skip' | 'post' | 'fb_post'>('create');
@@ -437,7 +437,7 @@ export default function CreateAdCampaignWizard() {
       const decodedTitle = postTitle ? decodeURIComponent(postTitle) : '';
       const decodedContent = postContent ? decodeURIComponent(postContent) : '';
       const decodedImage = postImage ? decodeURIComponent(postImage) : '';
-      
+
       setFormData(prev => ({
         ...prev,
         title: decodedTitle || prev.title,
@@ -589,7 +589,7 @@ export default function CreateAdCampaignWizard() {
       const queryPageId = searchParams.get('pageId');
 
       const resolvedAcc = queryAccId && mockAccs.some(a => a.id === queryAccId) ? queryAccId : mockAccs[0].id;
-      
+
       let resolvedPage = mockPages[0].accountIdentifier;
       if (queryPageId) {
         const matched = mockPages.find(p => p.accountIdentifier === queryPageId || p.id === queryPageId);
@@ -629,7 +629,7 @@ export default function CreateAdCampaignWizard() {
       name: prev.name || 'Campaign_SenDa_Premium_BestSeller_2026',
       objective: 'OUTCOME_TRAFFIC',
       budget: 250000,
-      
+
       // Ad Set
       adSetName: 'Nhóm 01 - Tệp Yêu Thích Cây Cảnh & Không Gian Xanh',
       billingEvent: 'IMPRESSIONS',
@@ -793,11 +793,11 @@ export default function CreateAdCampaignWizard() {
 
     try {
       setIsSubmitting(true);
-      const loadingMsg = 
-        targetStatus === 'DRAFT' 
-          ? 'Đang lưu bản nháp chiến dịch...' 
-          : targetStatus === 'PAUSED' 
-            ? 'Đang đồng bộ cấu trúc lên Facebook Ads (PAUSED)...' 
+      const loadingMsg =
+        targetStatus === 'DRAFT'
+          ? 'Đang lưu bản nháp chiến dịch...'
+          : targetStatus === 'PAUSED'
+            ? 'Đang đồng bộ cấu trúc lên Facebook Ads (PAUSED)...'
             : 'Đang khởi tạo và kích hoạt chiến dịch trên Meta Marketing API...';
       toast.loading(loadingMsg, { id: 'submit' });
 
@@ -816,11 +816,11 @@ export default function CreateAdCampaignWizard() {
       await api.post(`/facebookads/campaigns?adAccountId=${formData.adAccountId}`, payload);
       setFormData(prev => ({ ...prev, status: targetStatus }));
       toast.success(
-        targetStatus === 'DRAFT' 
-          ? 'Đã lưu bản nháp thành công!' 
-          : targetStatus === 'PAUSED' 
-            ? 'Đã đồng bộ lên Meta thành công (PAUSED)!' 
-            : 'Đã kích hoạt chiến dịch trên Meta thành công!', 
+        targetStatus === 'DRAFT'
+          ? 'Đã lưu bản nháp thành công!'
+          : targetStatus === 'PAUSED'
+            ? 'Đã đồng bộ lên Meta thành công (PAUSED)!'
+            : 'Đã kích hoạt chiến dịch trên Meta thành công!',
         { id: 'submit' }
       );
       setShowSuccessModal(true);
@@ -844,11 +844,11 @@ export default function CreateAdCampaignWizard() {
         );
       } else {
         setTimeout(() => {
-          const successMsg = 
-            targetStatus === 'DRAFT' 
-              ? 'Đã lưu bản nháp thành công (Sandbox Mode)!' 
-              : targetStatus === 'PAUSED' 
-                ? 'Chiến dịch đã đồng bộ thành công (Sandbox Mode - PAUSED)!' 
+          const successMsg =
+            targetStatus === 'DRAFT'
+              ? 'Đã lưu bản nháp thành công (Sandbox Mode)!'
+              : targetStatus === 'PAUSED'
+                ? 'Chiến dịch đã đồng bộ thành công (Sandbox Mode - PAUSED)!'
                 : 'Chiến dịch đã được kích hoạt thành công (Sandbox Mode - ACTIVE)!';
           toast.success(successMsg, { id: 'submit' });
           setFormData(prev => ({ ...prev, status: targetStatus }));
@@ -901,8 +901,8 @@ export default function CreateAdCampaignWizard() {
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-slate-950">
-                {formData.status === 'DRAFT' 
-                  ? 'Đã lưu bản nháp thành công!' 
+                {formData.status === 'DRAFT'
+                  ? 'Đã lưu bản nháp thành công!'
                   : formData.status === 'PAUSED'
                     ? 'Đồng bộ cấu trúc thành công!'
                     : 'Chiến dịch đã được kích hoạt!'}
@@ -1089,16 +1089,16 @@ export default function CreateAdCampaignWizard() {
                                     onClick={() => {
                                       setFormData(prev => {
                                         const next = { ...prev, pageId: page.accountIdentifier };
-                                        
+
                                         // Auto-match Ad Account based on selected Page name
                                         const clean = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/);
                                         const pageWords = clean(page.accountName).filter(w => w.length > 2);
-                                        
+
                                         const bestMatch = adAccounts.find(acc => {
                                           const accWords = clean(acc.accountName).filter(w => w.length > 2);
-                                          return pageWords.some(w => accWords.includes(w)) || 
-                                                 acc.accountName.toLowerCase().includes(page.accountName.toLowerCase()) ||
-                                                 page.accountName.toLowerCase().includes(acc.accountName.toLowerCase());
+                                          return pageWords.some(w => accWords.includes(w)) ||
+                                            acc.accountName.toLowerCase().includes(page.accountName.toLowerCase()) ||
+                                            page.accountName.toLowerCase().includes(acc.accountName.toLowerCase());
                                         });
 
                                         if (bestMatch) {
@@ -1136,16 +1136,14 @@ export default function CreateAdCampaignWizard() {
                           setShowAccountDropdown(!showAccountDropdown);
                           setShowPageDropdown(false);
                         }}
-                        className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-xs font-bold transition-all select-none shadow-sm ${
-                          !formData.pageId
+                        className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-xs font-bold transition-all select-none shadow-sm ${!formData.pageId
                             ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                             : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
-                        }`}
+                          }`}
                       >
                         <span className="flex items-center gap-2">
-                          <span className={`w-5 h-5 rounded-lg flex items-center justify-center font-black text-[10px] ${
-                            !formData.pageId ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600'
-                          }`}>A</span>
+                          <span className={`w-5 h-5 rounded-lg flex items-center justify-center font-black text-[10px] ${!formData.pageId ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600'
+                            }`}>A</span>
                           {!formData.pageId ? 'Vui lòng chọn Facebook Page trước...' : activeAccountName}
                         </span>
                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showAccountDropdown ? 'rotate-90' : ''}`} />
@@ -1439,7 +1437,7 @@ export default function CreateAdCampaignWizard() {
                             <option value="existing">📂 Chọn nhóm có sẵn</option>
                           )}
                         </select>
-                        
+
                         <div className="md:col-span-2">
                           {adSetMode === 'create' ? (
                             <input
@@ -1536,7 +1534,7 @@ export default function CreateAdCampaignWizard() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-500 block">Ngày kết thúc (Tùy chọn)</label>
+                          <label className="text-xs font-bold text-slate-500 block">/nNgày kết thúc (Tùy chọn)</label>
                           <input
                             type="datetime-local"
                             name="endTimeUtc"
@@ -1901,7 +1899,7 @@ export default function CreateAdCampaignWizard() {
                           <option value="fb_post">📘 Chọn từ bài viết Facebook</option>
                           <option value="existing">📂 Chọn mẫu có sẵn</option>
                         </select>
-                        
+
                         <div className="md:col-span-2">
                           {adMode === 'create' ? (
                             <input
@@ -2054,11 +2052,10 @@ export default function CreateAdCampaignWizard() {
                               setLocalPreview('');
                               toast.success(`Đã áp dụng mẫu: ${tpl.category}`);
                             }}
-                            className={`px-3 py-2 text-[10px] font-black rounded-xl border text-center transition-all ${
-                              formData.adName === tpl.adName
+                            className={`px-3 py-2 text-[10px] font-black rounded-xl border text-center transition-all ${formData.adName === tpl.adName
                                 ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
+                              }`}
                           >
                             {tpl.category}
                           </button>
@@ -2313,11 +2310,10 @@ export default function CreateAdCampaignWizard() {
                       type="button"
                       onClick={() => handleSubmit('ACTIVE')}
                       disabled={isSubmitting || !hasPaymentMethod}
-                      className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-black text-white rounded-xl shadow-md transition-all ${
-                        !hasPaymentMethod 
-                          ? 'bg-slate-300 cursor-not-allowed opacity-50 shadow-none' 
+                      className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-black text-white rounded-xl shadow-md transition-all ${!hasPaymentMethod
+                          ? 'bg-slate-300 cursor-not-allowed opacity-50 shadow-none'
                           : 'bg-green-600 hover:bg-green-700 shadow-green-500/10'
-                      }`}
+                        }`}
                       title={!hasPaymentMethod ? 'Chưa cấu hình phương thức thanh toán trên Meta' : 'Phát hành và bắt đầu chạy quảng cáo'}
                     >
                       🚀 Phát Hành Quảng Cáo

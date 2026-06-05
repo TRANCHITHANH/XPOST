@@ -2775,7 +2775,7 @@ setCampaigns(prev => prev.filter(c => c.id !== campaignId));
           onClick={() => setShowDetailModal(false)}
         >
           <div
-            className="bg-white rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.25)] w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+            className="bg-white rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.25)] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -2817,16 +2817,16 @@ setCampaigns(prev => prev.filter(c => c.id !== campaignId));
                       { label: 'Mục tiêu', value: OBJECTIVE_LABELS[detailCampaign.objective] ?? detailCampaign.objective, icon: <Target className="w-4 h-4 text-slate-400" /> },
                       { label: 'Ngân sách/ngày', value: `${detailCampaign.budget.toLocaleString('vi-VN')}đ`, icon: <DollarSign className="w-4 h-4 text-slate-400" /> },
                       { label: 'Doanh thu thu về', value: `${(detailCampaign.revenue || 0).toLocaleString('vi-VN')}đ`, icon: <TrendingUp className="w-4 h-4 text-slate-400" /> },
-                      { label: 'Thời gian bắt đầu', value: new Date(detailCampaign.startTimeUtc).toLocaleDateString('vi-VN'), icon: <Calendar className="w-4 h-4 text-slate-400" /> },
+                      { label: 'Lịch chạy', value: `${new Date(detailCampaign.startTimeUtc).toLocaleDateString('vi-VN')} - ${detailCampaign.endTimeUtc ? new Date(detailCampaign.endTimeUtc).toLocaleDateString('vi-VN') : 'Không giới hạn'}`, icon: <Calendar className="w-4 h-4 text-slate-400" /> },
                       { label: 'ROAS mục tiêu', value: `${detailCampaign.roas || 0}x`, icon: <Zap className="w-4 h-4 text-slate-400" /> },
                       { label: 'Số nhóm QC (Ad Sets)', value: `${detailCampaign.adSets?.length ?? 0} ad sets`, icon: <Layers className="w-4 h-4 text-slate-400" /> },
                     ].map((row, i) => (
-                      <div key={i} className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4">
+                      <div key={i} className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3 sm:p-4">
                         <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">
                           {row.icon}
                           <span>{row.label}</span>
                         </div>
-                        <p className="text-sm font-black text-slate-800">{row.value}</p>
+                        <p className="text-[13px] sm:text-sm font-black text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis" title={row.value}>{row.value}</p>
                       </div>
                     ))}
                   </div>

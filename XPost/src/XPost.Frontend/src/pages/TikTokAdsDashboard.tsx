@@ -491,7 +491,7 @@ export default function TikTokAdsDashboard() {
       {/* ── DETAIL MODAL ── */}
       {showDetailModal && detailCampaign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" onClick={() => setShowDetailModal(false)}>
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="relative overflow-hidden p-6 bg-gradient-to-r from-slate-950 to-slate-900 border-b border-slate-800">
               <div className="absolute top-0 right-0 w-40 h-40 bg-[#00f2fe]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
               <div className="relative z-10 flex justify-between items-start">
@@ -522,9 +522,9 @@ export default function TikTokAdsDashboard() {
                       { label: 'Nhóm QC (AdGroup)', value: `${detailCampaign.adGroups?.length ?? 0} adgroups`, icon: <Settings className="w-3.5 h-3.5 text-blue-400" /> },
                       { label: 'Mẫu sáng tạo (Ad)', value: `${detailCampaign.adGroups?.reduce((s, as) => s + as.ads.length, 0) ?? 0} ads`, icon: <Zap className="w-3.5 h-3.5 text-purple-400" /> },
                     ].map((item, i) => (
-                      <div key={i} className="bg-slate-950 border border-slate-850 rounded-2xl p-3.5 shadow-inner">
+                      <div key={i} className="bg-slate-950 border border-slate-850 rounded-2xl p-3 sm:p-3.5 shadow-inner">
                         <div className="flex items-center gap-1.5 text-slate-500 mb-1.5">{item.icon}<span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span></div>
-                        <p className="text-sm font-black text-slate-200">{item.value}</p>
+                        <p className="text-[13px] sm:text-sm font-black text-slate-200 whitespace-nowrap overflow-hidden text-ellipsis" title={item.value}>{item.value}</p>
                       </div>
                     ))}
                   </div>
