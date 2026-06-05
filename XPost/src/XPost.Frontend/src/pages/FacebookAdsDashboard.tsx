@@ -77,6 +77,7 @@ interface Campaign {
   endTimeUtc?: string;
   adAccount?: { id: string; adAccountId: string; accountName: string };
   adSets?: AdSet[];
+  pageId?: string;
   // Extended mock fields for enterprise view
   spend?: number;
   reach?: number;
@@ -300,7 +301,7 @@ export default function FacebookAdsDashboard() {
   const [modalAdSetMode, setModalAdSetMode] = useState<'create' | 'existing'>('create');
   const [modalAdSetName, setModalAdSetName] = useState('');
   const [modalSelectedAdSetId, setModalSelectedAdSetId] = useState('');
-  const [modalAdMode, setModalAdMode] = useState<'create' | 'existing' | 'skip'>('create');
+  const [modalAdMode, setModalAdMode] = useState<'create' | 'existing' | 'skip' | 'post' | 'fb_post'>('create');
   const [modalAdName, setModalAdName] = useState('');
 
   const modalSelectedCampaign = useMemo(() => {
@@ -310,12 +311,6 @@ export default function FacebookAdsDashboard() {
   const modalAdSets = useMemo(() => {
     return modalSelectedCampaign?.adSets || [];
   }, [modalSelectedCampaign]);
-
-  const modalExistingAdSets = useMemo(() => [
-    { id: 'adset_01', name: 'Nhóm Quảng Cáo - Đối Tượng Cây Cảnh & Sở Thích' },
-    { id: 'adset_02', name: 'Nhóm Quảng Cáo - Tương tác Hà Nội & Lân cận' },
-    { id: 'adset_03', name: 'Nhóm Quảng Cáo - Re-marketing Khách hàng Cũ' }
-  ], []);
 
   const modalExistingAds = useMemo(() => [
     { id: 'ad_01', name: 'Quảng cáo 01 - Banner Khuyến mãi Mùa hè' },
@@ -336,7 +331,7 @@ export default function FacebookAdsDashboard() {
   const [modalSelectedFbPostId, setModalSelectedFbPostId] = useState<string>('');
   const [isLoadingModalFbPosts, setIsLoadingModalFbPosts] = useState<boolean>(false);
   const [hasPaymentMethod, setHasPaymentMethod] = useState<boolean>(true);
-  const [fundingSource, setFundingSource] = useState<string>('');
+  const [, setFundingSource] = useState<string>('');
   const [businessManagerName, setBusinessManagerName] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [useManualToken, setUseManualToken] = useState(false);

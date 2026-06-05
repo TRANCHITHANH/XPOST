@@ -16,7 +16,7 @@ const resolveFileUrl = (url?: string | null) => {
 };
 import {
   ChevronRight, ChevronLeft, Image as ImageIcon,
-  Globe, Smartphone, ArrowRight, Check, Search,
+  Globe, Smartphone, Check, Search,
   Info, AlertCircle, Loader2
 } from 'lucide-react';
 
@@ -300,12 +300,6 @@ export default function CreateAdCampaignWizard() {
     return currentCampaign?.adSets || [];
   }, [currentCampaign]);
 
-  const existingAdSets = useMemo(() => [
-    { id: 'adset_01', name: 'Nhóm 01 - Đối tượng tiềm năng Hà Nội (ROAS 4.8x)' },
-    { id: 'adset_02', name: 'Nhóm 02 - Tương tác Lookalike 1% (ROAS 5.1x)' },
-    { id: 'adset_03', name: 'Nhóm 03 - Retargeting khách hàng Black Friday' }
-  ], []);
-
   const existingAds = useMemo(() => [
     { id: 'ad_01', name: 'Creative_01 - Image Banner Sale 30%', title: 'Giảm giá cực sâu - Mua ngay!', bodyText: 'Chương trình khuyến mãi lớn nhất trong năm dành cho khách hàng mới.' },
     { id: 'ad_02', name: 'Creative_02 - Video Reels Sen Đá', title: 'Sen đá mini đẹp xuất sắc', bodyText: 'Tuyển tập những mẫu sen đá dễ thương nhất quả đất.' },
@@ -517,7 +511,7 @@ export default function CreateAdCampaignWizard() {
   useEffect(() => {
     if (adSetMode === 'existing' && currentCampaignAdSets.length > 0) {
       if (queryAdSetId) {
-        const matchedAdSet = currentCampaignAdSets.find(x => x.id === queryAdSetId);
+        const matchedAdSet = currentCampaignAdSets.find((x: any) => x.id === queryAdSetId);
         if (matchedAdSet) {
           if (formData.adSetName !== matchedAdSet.name) {
             setFormData(prev => ({ ...prev, adSetName: matchedAdSet.name }));
@@ -527,7 +521,7 @@ export default function CreateAdCampaignWizard() {
           setQueryAdSetId(currentCampaignAdSets[0].id);
         }
       } else if (formData.adSetName) {
-        const matchedAdSet = currentCampaignAdSets.find(x => x.name === formData.adSetName);
+        const matchedAdSet = currentCampaignAdSets.find((x: any) => x.name === formData.adSetName);
         if (matchedAdSet) {
           setQueryAdSetId(matchedAdSet.id);
         } else {
@@ -1454,7 +1448,7 @@ export default function CreateAdCampaignWizard() {
                               value={formData.adSetName}
                               onChange={(e) => {
                                 const selectedName = e.target.value;
-                                const adset = currentCampaignAdSets.find(x => x.name === selectedName);
+                                const adset = currentCampaignAdSets.find((x: any) => x.name === selectedName);
                                 setFormData(prev => ({ ...prev, adSetName: selectedName }));
                                 if (adset) {
                                   setQueryAdSetId(adset.id);
@@ -1463,7 +1457,7 @@ export default function CreateAdCampaignWizard() {
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 transition-all shadow-sm"
                             >
                               {currentCampaignAdSets.length > 0 ? (
-                                currentCampaignAdSets.map(adset => (
+                                currentCampaignAdSets.map((adset: any) => (
                                   <option key={adset.id} value={adset.name}>
                                     {adset.name}
                                   </option>
