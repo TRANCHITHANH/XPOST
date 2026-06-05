@@ -726,7 +726,7 @@ export default function FacebookAdsDashboard() {
       
       setCampaigns(prev => prev.map(c => c.id === campaignId ? { ...c, status: targetStatus, metaCampaignId: res.data.metaCampaignId } : c));
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Lỗi đồng bộ API Meta.';
+      const msg = err.response?.data?.message || err.message || 'Lỗi đồng bộ API Meta.';
       if (msg.includes("payment method")) {
         toast.error(
           <div className="space-y-1 text-left">
@@ -734,6 +734,14 @@ export default function FacebookAdsDashboard() {
             <p className="text-[10px] leading-relaxed">{msg}</p>
           </div>,
           { id: 'sync-pub', duration: 7000 }
+        );
+      } else if (err.response) {
+        toast.error(
+          <div className="space-y-1.5 text-left">
+            <p className="font-extrabold text-xs text-red-600">Lỗi đồng bộ Meta API</p>
+            <p className="text-[11px] leading-normal text-slate-700">{msg}</p>
+          </div>,
+          { id: 'sync-pub', duration: 8000 }
         );
       } else {
         // Mock Sandbox Success Fallback

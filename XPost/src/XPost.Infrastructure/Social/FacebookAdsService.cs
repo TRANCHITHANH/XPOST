@@ -352,7 +352,6 @@ public class FacebookAdsService : IFacebookAdsService
         var accessToken = account.AccessToken;
         var actId = account.AdAccountId;
 
-        using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             FacebookCampaign campaign;
@@ -473,7 +472,7 @@ public class FacebookAdsService : IFacebookAdsService
                         ["name"] = dto.AdSetName,
                         ["campaign_id"] = metaCampaignId,
                         ["billing_event"] = dto.BillingEvent,
-                        ["optimization_goal"] = dto.Objective == "OUTCOME_TRAFFIC" ? "LINK_CLICKS" : "IMPRESSIONS",
+                        ["optimization_goal"] = ResolveOptimizationGoal(dto.Objective, dto.FacebookPostId),
                         ["targeting"] = targetingJson,
                         ["status"] = dto.Status == "ACTIVE" ? "ACTIVE" : "PAUSED",
                         ["access_token"] = accessToken
@@ -684,12 +683,10 @@ public class FacebookAdsService : IFacebookAdsService
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
             return campaign;
         }
         catch (Exception)
         {
-            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
     }
@@ -1065,7 +1062,6 @@ public class FacebookAdsService : IFacebookAdsService
         var accessToken = account.AccessToken;
         var actId = account.AdAccountId;
 
-        using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             // If currently in DRAFT (i.e. MetaCampaignId is draft_camp_*), we must create EVERYTHING on Meta!
@@ -1105,6 +1101,7 @@ public class FacebookAdsService : IFacebookAdsService
                 campaign.MetaCampaignId = realMetaCampId;
                 campaign.Status = targetStatus;
                 _dbContext.FacebookCampaigns.Update(campaign);
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 // 2. Process AdSets and Ads
                 foreach (var adSet in campaign.AdSets)
@@ -1125,12 +1122,13 @@ public class FacebookAdsService : IFacebookAdsService
                         };
                         var targetingJson = JsonSerializer.Serialize(targetingObj);
 
+                        var adSetPostId = adSet.Ads.FirstOrDefault(a => !string.IsNullOrEmpty(a.FacebookPostId))?.FacebookPostId;
                         var adsetPayload = new Dictionary<string, string>
                         {
                             ["name"] = adSet.Name,
                             ["campaign_id"] = realMetaCampId,
                             ["billing_event"] = adSet.BillingEvent,
-                            ["optimization_goal"] = campaign.Objective == "OUTCOME_TRAFFIC" ? "LINK_CLICKS" : "IMPRESSIONS",
+                            ["optimization_goal"] = ResolveOptimizationGoal(campaign.Objective, adSetPostId),
                             ["targeting"] = targetingJson,
                             ["status"] = targetStatus == "ACTIVE" ? "ACTIVE" : "PAUSED",
                             ["access_token"] = accessToken
@@ -1156,6 +1154,7 @@ public class FacebookAdsService : IFacebookAdsService
                         adSet.MetaAdSetId = realMetaAdSetId;
                         adSet.Status = targetStatus;
                         _dbContext.FacebookAdSets.Update(adSet);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
                     }
                     else
                     {
@@ -1174,6 +1173,7 @@ public class FacebookAdsService : IFacebookAdsService
                             await client.PostAsync(toggleUrl, new FormUrlEncodedContent(togglePayload), cancellationToken);
                         }
                         _dbContext.FacebookAdSets.Update(adSet);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
                     }
 
                     // Process Ads
@@ -1283,6 +1283,7 @@ public class FacebookAdsService : IFacebookAdsService
                             ad.MetaAdId = realMetaAdId;
                             ad.Status = targetStatus;
                             _dbContext.FacebookAds.Update(ad);
+                            await _dbContext.SaveChangesAsync(cancellationToken);
                         }
                         else
                         {
@@ -1299,6 +1300,7 @@ public class FacebookAdsService : IFacebookAdsService
                                 await client.PostAsync(toggleUrl, new FormUrlEncodedContent(togglePayload), cancellationToken);
                             }
                             _dbContext.FacebookAds.Update(ad);
+                            await _dbContext.SaveChangesAsync(cancellationToken);
                         }
                     }
                 }
@@ -1368,14 +1370,27 @@ public class FacebookAdsService : IFacebookAdsService
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
             return campaign;
         }
         catch (Exception)
         {
-            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    private string ResolveOptimizationGoal(string objective, string? facebookPostId)
+    {
+        var hasExistingPost = !string.IsNullOrEmpty(facebookPostId);
+
+        return objective switch
+        {
+            "OUTCOME_TRAFFIC" => hasExistingPost ? "IMPRESSIONS" : "LINK_CLICKS",
+            "OUTCOME_ENGAGEMENT" => "POST_ENGAGEMENT",
+            "OUTCOME_AWARENESS" => "IMPRESSIONS",
+            "OUTCOME_SALES" => hasExistingPost ? "IMPRESSIONS" : "OFFSITE_CONVERSIONS",
+            "OUTCOME_LEADS" => hasExistingPost ? "IMPRESSIONS" : "LEADS",
+            _ => "IMPRESSIONS"
+        };
     }
 
     private static string ExtractErrorMessage(string json)
@@ -1383,11 +1398,28 @@ public class FacebookAdsService : IFacebookAdsService
         try
         {
             var doc = JsonSerializer.Deserialize<JsonElement>(json);
-            if (doc.TryGetProperty("error", out var errorObj) && errorObj.TryGetProperty("message", out var msg))
-                return msg.GetString() ?? "Unknown error";
+            if (doc.TryGetProperty("error", out var errorObj))
+            {
+                var sb = new System.Text.StringBuilder();
+                if (errorObj.TryGetProperty("message", out var msg))
+                {
+                    sb.Append(msg.GetString());
+                }
+                if (errorObj.TryGetProperty("error_user_title", out var title))
+                {
+                    sb.Append($" | Title: {title.GetString()}");
+                }
+                if (errorObj.TryGetProperty("error_user_msg", out var userMsg))
+                {
+                    sb.Append($" | Details: {userMsg.GetString()}");
+                }
+
+                if (sb.Length > 0)
+                    return sb.ToString();
+            }
         }
         catch { }
-        return "Unknown Meta API error";
+        return $"Unknown Meta API error: {json}";
     }
 
     public async Task<List<FacebookPagePostDto>> GetFacebookPagePostsAsync(string pageIdentifier, CancellationToken cancellationToken = default)

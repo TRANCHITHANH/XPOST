@@ -825,8 +825,7 @@ export default function CreateAdCampaignWizard() {
       );
       setShowSuccessModal(true);
     } catch (err: any) {
-      // Simulate successful save in preview mode/sandbox mode fallback
-      const msg = err.response?.data?.message || '';
+      const msg = err.response?.data?.message || err.message || '';
       if (msg.includes("payment method")) {
         toast.error(
           <div className="space-y-1 text-left">
@@ -834,6 +833,14 @@ export default function CreateAdCampaignWizard() {
             <p className="text-[10px] leading-relaxed">{msg}</p>
           </div>,
           { id: 'submit', duration: 7000 }
+        );
+      } else if (err.response) {
+        toast.error(
+          <div className="space-y-1.5 text-left">
+            <p className="font-extrabold text-xs text-red-600">Lỗi đồng bộ Meta API</p>
+            <p className="text-[11px] leading-normal text-slate-700">{msg}</p>
+          </div>,
+          { id: 'submit', duration: 8000 }
         );
       } else {
         setTimeout(() => {
