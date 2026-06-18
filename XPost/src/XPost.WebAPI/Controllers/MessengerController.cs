@@ -955,6 +955,25 @@ public class MessengerController : ControllerBase
                     var url = postback.Payload.Substring("VISIT_WEBSITE:".Length);
                     var session = await GetOrCreateSessionByPsidAsync(chatbot, pageToken, senderPsid, ct);
 
+                    // Determine appropriate intro text based on the button title or URL target
+                    var introText = "Dạ, em gửi anh/chị liên kết chi tiết bên dưới nhé! Mời anh/chị nhấn vào nút để xem thông tin ạ. 😊";
+                    if (!string.IsNullOrEmpty(postback.Title) && 
+                        (postback.Title.Contains("khiếu nại", StringComparison.OrdinalIgnoreCase) || 
+                         postback.Title.Contains("khieu nai", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        introText = "Dạ, anh/chị vui lòng nhấn vào nút bên dưới để điền thông tin khiếu nại giúp em nhé. Hệ thống sẽ tiếp nhận và xử lý ngay ạ! 📝";
+                    }
+                    else if (!string.IsNullOrEmpty(url) && (url.Contains("forms.gle") || url.Contains("forms") || url.Contains("google.com/forms")))
+                    {
+                        introText = "Dạ, anh/chị vui lòng nhấn vào nút bên dưới để điền thông tin khiếu nại giúp em nhé. Hệ thống sẽ tiếp nhận và xử lý ngay ạ! 📝";
+                    }
+                    else if (!string.IsNullOrEmpty(postback.Title) && 
+                             (postback.Title.Contains("báo giá", StringComparison.OrdinalIgnoreCase) || 
+                              postback.Title.Contains("bao gia", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        introText = "Dạ, em gửi anh/chị liên kết báo giá chi tiết bên dưới nhé! Mời anh/chị nhấn vào nút để xem thông tin ạ. 😊";
+                    }
+
                     var subButtons = new List<ChatbotUrlButtonInfo>();
                     bool isJson = false;
                     string botMsgText = "";
@@ -973,7 +992,8 @@ public class MessengerController : ControllerBase
                                     var urlProp = el.TryGetProperty("url", out var uProp) ? uProp.GetString() : null;
                                     if (!string.IsNullOrWhiteSpace(titleProp) && !string.IsNullOrWhiteSpace(urlProp))
                                     {
-                                        subButtons.Add(new ChatbotUrlButtonInfo(titleProp, urlProp));
+                                        var replacedUrl = urlProp.Replace("PAGE_ID", chatbot.MessengerPageId ?? "").Replace("PSID", senderPsid);
+                                        subButtons.Add(new ChatbotUrlButtonInfo(titleProp, replacedUrl));
                                     }
                                 }
                             }
@@ -992,12 +1012,14 @@ public class MessengerController : ControllerBase
                         {
                             for (int i = 0; i < urls.Count; i++)
                             {
-                                subButtons.Add(new ChatbotUrlButtonInfo($"Liên kết {i + 1}", urls[i]));
+                                var replacedUrl = urls[i].Replace("PAGE_ID", chatbot.MessengerPageId ?? "").Replace("PSID", senderPsid);
+                                subButtons.Add(new ChatbotUrlButtonInfo($"Liên kết {i + 1}", replacedUrl));
                             }
                         }
                         else if (urls.Count == 1)
                         {
-                            subButtons.Add(new ChatbotUrlButtonInfo("Xem chi tiết", urls[0]));
+                            var replacedUrl = urls[0].Replace("PAGE_ID", chatbot.MessengerPageId ?? "").Replace("PSID", senderPsid);
+                            subButtons.Add(new ChatbotUrlButtonInfo("Xem chi tiết", replacedUrl));
                         }
                     }
 
@@ -1005,7 +1027,7 @@ public class MessengerController : ControllerBase
                     if (subButtons.Count > 1)
                     {
                         var sb = new StringBuilder();
-                        sb.AppendLine("Dưới đây là các liên kết dành cho bạn:");
+                        sb.AppendLine(introText);
                         foreach (var btn in subButtons)
                         {
                             sb.AppendLine($"- {btn.Title}: {btn.Url}");
@@ -1014,7 +1036,7 @@ public class MessengerController : ControllerBase
                     }
                     else if (subButtons.Count == 1)
                     {
-                        botMsgText = $"Nhấn vào nút bên dưới để mở website nhé: {subButtons[0].Url} 🌐";
+                        botMsgText = $"{introText}\n- Link: {subButtons[0].Url}";
                     }
                     else
                     {
@@ -1089,11 +1111,11 @@ public class MessengerController : ControllerBase
                     {
                         // Send up to 3 buttons in a button template (capping at 3 to comply with Facebook Ads limitations)
                         var buttonsToSend = subButtons.Take(3).ToList();
-                        await _messengerService.SendMultipleUrlButtonsAsync(pageToken, senderPsid, "Dạ, em gửi anh/chị các liên kết báo giá chi tiết bên dưới nhé! Mời anh/chị nhấn vào nút tương ứng để xem thông tin ạ. 😊", buttonsToSend, quickReplies, ct);
+                        await _messengerService.SendMultipleUrlButtonsAsync(pageToken, senderPsid, introText, buttonsToSend, quickReplies, ct);
                     }
                     else if (subButtons.Count == 1)
                     {
-                        await _messengerService.SendUrlButtonAsync(pageToken, senderPsid, "Dạ, em gửi anh/chị liên kết báo giá chi tiết bên dưới nhé! Mời anh/chị nhấn vào nút để xem thông tin ạ. 😊", subButtons[0].Title, subButtons[0].Url, quickReplies, ct);
+                        await _messengerService.SendUrlButtonAsync(pageToken, senderPsid, introText, subButtons[0].Title, subButtons[0].Url, quickReplies, ct);
                     }
                     else
                     {

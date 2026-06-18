@@ -950,6 +950,14 @@ public class PageManagementController : ControllerBase
                     await messengerService.SendTextWithQuickRepliesAsync(pageToken, order.Psid, msgText, quickReplies, ct);
                 }
             }
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] UpdateOrderStatus Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in UpdateOrderStatus", details = ex.Message });
+        }
+    }
 
     [HttpGet("{accountId}/conversations/{psid}/complaints")]
     public async Task<IActionResult> GetConversationComplaints(
