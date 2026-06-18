@@ -872,6 +872,7 @@ public class PageManagementController : ControllerBase
         [FromBody] UpdateOrderStatusRequest req,
         [FromServices] ApplicationDbContext db,
         [FromServices] IMessengerService messengerService,
+        [FromServices] IEmailService emailService,
         CancellationToken ct)
     {
         try
@@ -895,6 +896,51 @@ public class PageManagementController : ControllerBase
             if (newStatus.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) && 
                 !oldStatus.Equals("Confirmed", StringComparison.OrdinalIgnoreCase))
             {
+                // Gửi email thông báo cho khách hàng nếu có điền Email
+                if (!string.IsNullOrWhiteSpace(order.Email))
+                {
+                    try
+                    {
+                        var emailSubject = "Xác nhận đơn hàng thành công - XPost";
+                        var emailBody = $@"
+<div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;"">
+    <h2 style=""color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-top: 0;"">Xác Nhận Đơn Hàng Thành Công</h2>
+    <p>Kính gửi Quý khách <strong>{order.FullName}</strong>,</p>
+    <p>Chúng tôi xin vui mừng thông báo rằng đơn hàng của Quý khách trên hệ thống XPost đã được tiếp nhận và xác nhận thành công!</p>
+    <div style=""background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #eee;"">
+        <h3 style=""margin-top: 0; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 8px;"">Thông tin chi tiết đơn hàng</h3>
+        <table style=""width: 100%; border-collapse: collapse;"">
+            <tr>
+                <td style=""padding: 6px 0; color: #666; width: 150px;""><strong>Họ và tên:</strong></td>
+                <td style=""padding: 6px 0; color: #333;"">{order.FullName}</td>
+            </tr>
+            <tr>
+                <td style=""padding: 6px 0; color: #666;""><strong>Số điện thoại:</strong></td>
+                <td style=""padding: 6px 0; color: #333;"">{order.PhoneNumber}</td>
+            </tr>
+            <tr>
+                <td style=""padding: 6px 0; color: #666;""><strong>Địa chỉ giao hàng:</strong></td>
+                <td style=""padding: 6px 0; color: #333;"">{order.Address}</td>
+            </tr>
+            <tr>
+                <td style=""padding: 6px 0; color: #666;""><strong>Dịch vụ/Thiết bị:</strong></td>
+                <td style=""padding: 6px 0; color: #333;"">{order.SelectedItem}</td>
+            </tr>
+        </table>
+    </div>
+    <p>Cảm ơn Quý khách đã tin tưởng và lựa chọn dịch vụ của XPost. Đội ngũ tư vấn viên/vận chuyển sẽ liên hệ sớm nhất với Quý khách để tiến hành các bước tiếp theo.</p>
+    <p style=""margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; font-size: 12px; color: #888; text-align: center;"">
+        Đây là email tự động từ hệ thống XPost. Vui lòng không trả lời trực tiếp email này.
+    </p>
+</div>";
+                        await emailService.SendEmailAsync(order.Email, emailSubject, emailBody, isHtml: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ERROR] Failed to send order confirmation email: {ex.Message}");
+                    }
+                }
+
                 var chatbot = await db.Chatbots
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(c => c.MessengerPageId == order.PageId && c.IsActive, ct);
@@ -1084,6 +1130,7 @@ public class PageManagementController : ControllerBase
         [FromBody] UpdateComplaintStatusRequest req,
         [FromServices] ApplicationDbContext db,
         [FromServices] IMessengerService messengerService,
+        [FromServices] IEmailService emailService,
         CancellationToken ct)
     {
         try
@@ -1107,6 +1154,47 @@ public class PageManagementController : ControllerBase
             if (newStatus.Equals("Processed", StringComparison.OrdinalIgnoreCase) && 
                 !oldStatus.Equals("Processed", StringComparison.OrdinalIgnoreCase))
             {
+                // Gửi email thông báo cho khách hàng nếu có điền Email
+                if (!string.IsNullOrWhiteSpace(complaint.Email))
+                {
+                    try
+                    {
+                        var emailSubject = "Khiếu nại của bạn đã được xử lý - XPost";
+                        var emailBody = $@"
+<div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;"">
+    <h2 style=""color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-top: 0;"">Khiếu Nại Của Bạn Đã Được Xử Lý</h2>
+    <p>Kính gửi Quý khách <strong>{complaint.FullName}</strong>,</p>
+    <p>Hệ thống hỗ trợ khách hàng XPost xin thông báo yêu cầu khiếu nại của Quý khách đã được tiếp nhận và xử lý thành công.</p>
+    <div style=""background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #eee;"">
+        <h3 style=""margin-top: 0; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 8px;"">Thông tin chi tiết khiếu nại</h3>
+        <table style=""width: 100%; border-collapse: collapse;"">
+            <tr>
+                <td style=""padding: 6px 0; color: #666; width: 150px;""><strong>Họ và tên:</strong></td>
+                <td style=""padding: 6px 0; color: #333;"">{complaint.FullName}</td>
+            </tr>
+            <tr>
+                <td style=""padding: 6px 0; color: #666;""><strong>Số điện thoại:</strong></td>
+                <td style=""padding: 6px 0; color: #333;"">{complaint.PhoneNumber}</td>
+            </tr>
+            <tr>
+                <td style=""padding: 6px 0; color: #666; vertical-align: top;""><strong>Nội dung:</strong></td>
+                <td style=""padding: 6px 0; color: #555; font-style: italic;"">""{complaint.Content}""</td>
+            </tr>
+        </table>
+    </div>
+    <p>Chúng tôi rất lấy làm tiếc về bất kỳ sự bất tiện nào đã gây ra cho Quý khách. Phản hồi của Quý khách vô cùng quý giá giúp chúng tôi nâng cao chất lượng dịch vụ tốt hơn.</p>
+    <p style=""margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; font-size: 12px; color: #888; text-align: center;"">
+        Đây là email tự động từ hệ thống XPost. Vui lòng không trả lời trực tiếp email này.
+    </p>
+</div>";
+                        await emailService.SendEmailAsync(complaint.Email, emailSubject, emailBody, isHtml: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ERROR] Failed to send complaint processing email: {ex.Message}");
+                    }
+                }
+
                 var chatbot = await db.Chatbots
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(c => c.MessengerPageId == complaint.PageId && c.IsActive, ct);

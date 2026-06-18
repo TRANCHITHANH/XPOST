@@ -604,6 +604,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             entity.Property(e => e.Content).HasMaxLength(4000).IsRequired();
             entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Pending");
             entity.Property(e => e.CreatedAtUtc).HasDefaultValueSql("sysutcdatetime()");
+
+            // Ignore inherited properties not in the database table
+            entity.Ignore(e => e.CreatedAt);
+            entity.Ignore(e => e.UpdatedAt);
         });
     }
 
