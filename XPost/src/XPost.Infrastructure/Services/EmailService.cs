@@ -42,6 +42,7 @@ public class EmailService : IEmailService
             email.Body = builder.ToMessageBody();
 
             using var smtp = new SmtpClient();
+            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
             await smtp.ConnectAsync(_emailSettings.SmtpServer, _emailSettings.SmtpPort, SecureSocketOptions.StartTls);
             await smtp.AuthenticateAsync(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
             await smtp.SendAsync(email);
