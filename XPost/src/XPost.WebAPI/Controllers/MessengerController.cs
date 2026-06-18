@@ -155,6 +155,21 @@ public class MessengerController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.PageId) || string.IsNullOrWhiteSpace(req.Psid))
             return BadRequest(new { message = "Không tìm thấy PageId hoặc Psid của cuộc trò chuyện." });
 
+        // Chặn trùng lặp (Deduplication) - nếu cùng PageId, Psid và dịch vụ/thiết bị trong vòng 10 giây qua
+        var tenSecondsAgo = DateTime.UtcNow.AddSeconds(-10);
+        var isDuplicate = await db.Orders
+            .IgnoreQueryFilters()
+            .AnyAsync(o => o.PageId == req.PageId && 
+                           o.Psid == req.Psid && 
+                           o.SelectedItem == req.SelectedItem && 
+                           o.CreatedAtUtc >= tenSecondsAgo, ct);
+
+        if (isDuplicate)
+        {
+            Console.WriteLine($"[INFO] Ignoring duplicate order submission from PSID {req.Psid} in the last 10 seconds.");
+            return Ok(new { success = true, duplicate = true });
+        }
+
         var chatbot = await db.Chatbots
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.MessengerPageId == req.PageId && c.IsActive, ct);
@@ -306,6 +321,21 @@ public class MessengerController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(req.PageId) || string.IsNullOrWhiteSpace(req.Psid))
             return BadRequest(new { message = "Không tìm thấy PageId hoặc Psid của cuộc trò chuyện." });
+
+        // Chặn trùng lặp (Deduplication) - nếu cùng PageId, Psid và nội dung trong vòng 10 giây qua
+        var tenSecondsAgo = DateTime.UtcNow.AddSeconds(-10);
+        var isDuplicate = await db.Complaints
+            .IgnoreQueryFilters()
+            .AnyAsync(c => c.PageId == req.PageId && 
+                           c.Psid == req.Psid && 
+                           c.Content == (req.Content ?? "") && 
+                           c.CreatedAtUtc >= tenSecondsAgo, ct);
+
+        if (isDuplicate)
+        {
+            Console.WriteLine($"[INFO] Ignoring duplicate complaint submission from PSID {req.Psid} in the last 10 seconds.");
+            return Ok(new { success = true, duplicate = true });
+        }
 
         var chatbot = await db.Chatbots
             .IgnoreQueryFilters()
