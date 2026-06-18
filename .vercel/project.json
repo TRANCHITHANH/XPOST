@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_jdmTNXalnMFG63eUaEJW52RL9nSB",
+  "orgId": "team_p5PDtMyMJtRlcmiwjzciYapc",
+  "projectName": "xpost",
+  "settings": {
+    "createdAt": 1779853021926,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": "XPost/src/XPost.Frontend",
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}

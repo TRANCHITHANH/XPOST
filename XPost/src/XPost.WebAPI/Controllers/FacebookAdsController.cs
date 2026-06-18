@@ -222,7 +222,36 @@ public class FacebookAdsController : ControllerBase
         }
     }
 
+    [HttpPut("campaigns/{id}")]
+    public async Task<IActionResult> UpdateCampaign(Guid id, [FromBody] UpdateCampaignDto dto, CancellationToken ct)
+    {
+        if (dto == null)
+            return BadRequest(new { message = "Data is required." });
+
+        try
+        {
+            var campaign = await _adsService.UpdateCampaignAsync(id, dto, ct);
+            return Ok(new
+            {
+                campaign.Id,
+                campaign.MetaCampaignId,
+                campaign.Name,
+                campaign.Objective,
+                campaign.Status,
+                campaign.Budget,
+                campaign.StartTimeUtc,
+                campaign.EndTimeUtc,
+                campaign.UpdatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("campaigns/{id}")]
+
     public async Task<IActionResult> DeleteCampaign(Guid id, CancellationToken ct)
     {
         var success = await _adsService.DeleteCampaignAsync(id, ct);
@@ -240,6 +269,50 @@ public class FacebookAdsController : ControllerBase
             return NotFound(new { message = $"Ad Set {id} not found." });
 
         return Ok(new { message = "Ad Set deleted successfully.", id });
+    }
+
+    [HttpDelete("ads/{id}")]
+    public async Task<IActionResult> DeleteAd(Guid id, CancellationToken ct)
+    {
+        var success = await _adsService.DeleteAdAsync(id, ct);
+        if (!success)
+            return NotFound(new { message = $"Ad {id} not found." });
+
+        return Ok(new { message = "Ad deleted successfully.", id });
+    }
+
+    [HttpPut("adsets/{id}")]
+    public async Task<IActionResult> UpdateAdSet(Guid id, [FromBody] UpdateAdSetDto dto, CancellationToken ct)
+    {
+        if (dto == null)
+            return BadRequest(new { message = "Data is required." });
+
+        try
+        {
+            var adSet = await _adsService.UpdateAdSetAsync(id, dto, ct);
+            return Ok(adSet);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("ads/{id}")]
+    public async Task<IActionResult> UpdateAd(Guid id, [FromBody] UpdateFacebookAdDto dto, CancellationToken ct)
+    {
+        if (dto == null)
+            return BadRequest(new { message = "Data is required." });
+
+        try
+        {
+            var ad = await _adsService.UpdateAdAsync(id, dto, ct);
+            return Ok(ad);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("adsets/bulk-delete")]
@@ -264,6 +337,40 @@ public class FacebookAdsController : ControllerBase
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to delete ad set {id}: {ex.Message}");
+                failedIds.Add(id);
+            }
+        }
+
+        return Ok(new 
+        { 
+            message = $"Bulk delete completed: {succeededIds.Count} succeeded, {failedIds.Count} failed.", 
+            succeededIds, 
+            failedIds 
+        });
+    }
+
+    [HttpPost("ads/bulk-delete")]
+    public async Task<IActionResult> BulkDeleteAds([FromBody] List<Guid> ids, CancellationToken ct)
+    {
+        if (ids == null || ids.Count == 0)
+            return BadRequest(new { message = "Ids must not be empty." });
+
+        var succeededIds = new List<Guid>();
+        var failedIds = new List<Guid>();
+
+        foreach (var id in ids)
+        {
+            try
+            {
+                var success = await _adsService.DeleteAdAsync(id, ct);
+                if (success)
+                    succeededIds.Add(id);
+                else
+                    failedIds.Add(id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to delete ad {id}: {ex.Message}");
                 failedIds.Add(id);
             }
         }
@@ -327,6 +434,41 @@ public class FacebookAdsController : ControllerBase
         }
     }
 
+    [HttpPost("ads/{id}/move")]
+    public async Task<IActionResult> MoveAd(Guid id, [FromBody] MoveAdRequest request, CancellationToken ct)
+    {
+        if (request == null || request.NewAdSetId == Guid.Empty)
+            return BadRequest(new { message = "NewAdSetId is required." });
+
+        try
+        {
+            var ad = await _adsService.MoveAdAsync(id, request.NewAdSetId, ct);
+            return Ok(new
+            {
+                ad.Id,
+                ad.Name,
+                ad.Title,
+                ad.BodyText,
+                ad.MediaUrl,
+                ad.DestinationUrl,
+                ad.CallToAction,
+                ad.FacebookPostId,
+                ad.Status,
+                ad.CreatedAt,
+                ad.UpdatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    public class MoveAdRequest
+    {
+        public Guid NewAdSetId { get; set; }
+    }
+
     [HttpGet("campaigns/{id}/insights")]
     public async Task<IActionResult> GetCampaignInsights(Guid id, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, CancellationToken ct)
     {
@@ -362,6 +504,54 @@ public class FacebookAdsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("campaigns/{id}/duplicate")]
+    public async Task<IActionResult> DuplicateCampaign(Guid id, [FromQuery] int count = 1, CancellationToken ct = default)
+    {
+        try
+        {
+            var results = await _adsService.DuplicateCampaignAsync(id, count, ct);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("adsets/{id}/duplicate")]
+    public async Task<IActionResult> DuplicateAdSet(Guid id, [FromBody] DuplicateAdSetRequest request, CancellationToken ct = default)
+    {
+        if (request == null)
+            return BadRequest(new { message = "Request body is required." });
+
+        try
+        {
+            var results = await _adsService.DuplicateAdSetAsync(id, request, ct);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("ads/{id}/duplicate")]
+    public async Task<IActionResult> DuplicateAd(Guid id, [FromBody] DuplicateAdRequest request, CancellationToken ct = default)
+    {
+        if (request == null)
+            return BadRequest(new { message = "Request body is required." });
+
+        try
+        {
+            var results = await _adsService.DuplicateAdAsync(id, request, ct);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

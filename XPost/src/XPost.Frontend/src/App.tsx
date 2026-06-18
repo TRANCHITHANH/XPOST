@@ -20,6 +20,8 @@ import FacebookAdsDashboard from './pages/FacebookAdsDashboard';
 import CreateAdCampaignWizard from './pages/CreateAdCampaignWizard';
 import TikTokAdsDashboard from './pages/TikTokAdsDashboard';
 import CreateTikTokAdCampaignWizard from './pages/CreateTikTokAdCampaignWizard';
+import ChatbotConfigPage from './pages/ChatbotConfig';
+import OrderForm from './pages/OrderForm';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -32,6 +34,7 @@ function App() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/order-form" element={<OrderForm />} />
 
         {/* Authenticated routes — wrapped by MainLayout (MasterPage) */}
         <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" />}>
@@ -47,6 +50,8 @@ function App() {
           <Route path="/facebook-ads/create" element={<CreateAdCampaignWizard />} />
           <Route path="/tiktok-ads" element={<TikTokAdsDashboard />} />
           <Route path="/tiktok-ads/create" element={<CreateTikTokAdCampaignWizard />} />
+          <Route path="/chatbot/new" element={<ChatbotConfigPage />} />
+          <Route path="/chatbot/:id/config" element={<ChatbotConfigPage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin/tenants" element={<Tenants />} />
           <Route path="/settings/company" element={<CompanyProfile />} />

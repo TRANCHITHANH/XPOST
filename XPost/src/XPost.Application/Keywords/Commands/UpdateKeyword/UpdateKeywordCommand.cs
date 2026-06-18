@@ -10,6 +10,7 @@ public class UpdateKeywordCommand : IRequest<bool>
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? Language { get; set; }
+    public string? GeneratedContent { get; set; }
 }
 
 public class UpdateKeywordCommandHandler : IRequestHandler<UpdateKeywordCommand, bool>
@@ -31,6 +32,10 @@ public class UpdateKeywordCommandHandler : IRequestHandler<UpdateKeywordCommand,
         keyword.Name = request.Name;
         keyword.Description = request.Description;
         keyword.Language = request.Language;
+        if (request.GeneratedContent != null)
+        {
+            keyword.GeneratedContent = request.GeneratedContent;
+        }
         keyword.UpdatedAt = DateTime.UtcNow;
 
         await repo.UpdateAsync(keyword);

@@ -4,6 +4,7 @@ import api, { API_BASE_URL } from '../lib/axios';
 import SafeImage from '../components/common/SafeImage';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
+import { Trash2 } from 'lucide-react';
 
 import { formatDateTimeVN } from '../lib/dateUtils';
 
@@ -11,8 +12,8 @@ const resolveFileUrl = (url?: string | null) => {
     if (!url) return '';
     let resolved = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
     if (resolved.includes('ngrok-free.dev') && !import.meta.env.PROD) {
-        const localApi = window.location.hostname === 'local.xpost.com' 
-            ? 'http://local-api.xpost.com:5243' 
+        const localApi = window.location.hostname === 'local.xpost.com'
+            ? 'http://local-api.xpost.com:5243'
             : 'http://localhost:5243';
         return resolved.replace(/^https:\/\/.*?\.ngrok-free\.dev/i, localApi);
     }
@@ -64,27 +65,27 @@ const SOCIAL_PLATFORMS: Record<number, { name: string, icon: React.ReactElement 
     },
     1: {
         name: 'Facebook',
-        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
     },
     2: {
         name: 'Twitter/X',
-        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
     },
     3: {
         name: 'Instagram',
-        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg>
     },
     4: {
         name: 'LinkedIn',
-        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
     },
     7: {
         name: 'WordPress',
-        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.027-.78-.07-1.109zm-7.981.105c.647-.034 1.233-.1 1.233-.1.58-.068.512-.921-.068-.889 0 0-1.744.137-2.866.137-1.055 0-2.865-.137-2.865-.137-.58-.032-.648.856-.068.889 0 0 .552.066 1.133.1l1.682 4.615-2.364 7.088L6.841 6.93c.649-.034 1.233-.1 1.233-.1.581-.068.513-.921-.067-.889 0 0-1.745.137-2.866.137-.201 0-.44-.005-.697-.015C6.273 3.56 8.96 1.907 12 1.907c2.266 0 4.33.867 5.88 2.285-.038-.002-.075-.006-.114-.006-.888 0-1.517.774-1.517 1.604 0 .744.43 1.374.888 2.118.344.587.744 1.341.744 2.43 0 .753-.29 1.626-.674 2.843l-.882 2.95-3.19-9.489.003-.012zM12 22.094c-1.41 0-2.746-.29-3.959-.814l4.208-12.225 4.31 11.81c.028.07.056.092.084.162A10.043 10.043 0 0 1 12 22.094zM1.213 12c0-2.084.607-4.03 1.656-5.666L8.131 20.73C4.128 18.96 1.213 15.79 1.213 12zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/></svg>
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.027-.78-.07-1.109zm-7.981.105c.647-.034 1.233-.1 1.233-.1.58-.068.512-.921-.068-.889 0 0-1.744.137-2.866.137-1.055 0-2.865-.137-2.865-.137-.58-.032-.648.856-.068.889 0 0 .552.066 1.133.1l1.682 4.615-2.364 7.088L6.841 6.93c.649-.034 1.233-.1 1.233-.1.581-.068.513-.921-.067-.889 0 0-1.745.137-2.866.137-.201 0-.44-.005-.697-.015C6.273 3.56 8.96 1.907 12 1.907c2.266 0 4.33.867 5.88 2.285-.038-.002-.075-.006-.114-.006-.888 0-1.517.774-1.517 1.604 0 .744.43 1.374.888 2.118.344.587.744 1.341.744 2.43 0 .753-.29 1.626-.674 2.843l-.882 2.95-3.19-9.489.003-.012zM12 22.094c-1.41 0-2.746-.29-3.959-.814l4.208-12.225 4.31 11.81c.028.07.056.092.084.162A10.043 10.043 0 0 1 12 22.094zM1.213 12c0-2.084.607-4.03 1.656-5.666L8.131 20.73C4.128 18.96 1.213 15.79 1.213 12zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z" /></svg>
     },
     8: {
         name: 'Telegram',
-        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.888-.662 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.888-.662 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" /></svg>
     },
     9: {
         name: 'Zalo',
@@ -130,6 +131,10 @@ export default function PostList() {
     const [postToDelete, setPostToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
     const fetchPosts = useCallback(async () => {
         setLoading(true);
         try {
@@ -148,9 +153,70 @@ export default function PostList() {
         }
     }, [pageIndex, pageSize, filterKeyword, filterStatus]);
 
+    const fetchPostsQuietly = useCallback(async () => {
+        try {
+            const params = new URLSearchParams();
+            params.append('pageIndex', pageIndex.toString());
+            params.append('pageSize', pageSize.toString());
+            if (filterKeyword) params.append('keyword', filterKeyword);
+            if (filterStatus !== '') params.append('status', filterStatus);
+
+            const res = await api.get(`/posts?${params.toString()}`);
+            setData(res.data);
+        } catch (error) {
+            // Ignore errors for background polling
+        }
+    }, [pageIndex, pageSize, filterKeyword, filterStatus]);
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked && data) {
+            setSelectedIds(new Set(data.items.map(p => p.id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleSelectPost = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.size} bài viết đã chọn không?`)) return;
+
+        setIsBulkDeleting(true);
+        try {
+            await Promise.all(Array.from(selectedIds).map(id => api.delete(`/posts/${id}`)));
+            toast.success(`Đã xóa thành công ${selectedIds.size} bài viết.`);
+            setSelectedIds(new Set());
+            fetchPosts();
+        } catch (err) {
+            console.error('Bulk delete failed', err);
+            toast.error('Có lỗi xảy ra khi xóa một số bài viết.');
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    };
+
     useEffect(() => {
         fetchPosts();
     }, [fetchPosts]);
+
+    // Real-time polling every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchPostsQuietly();
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [fetchPostsQuietly]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -217,30 +283,34 @@ export default function PostList() {
                         onChange={(e) => setFilterStatus(e.target.value)}
                         className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-xl transition-colors border"
                     >
-                        <option value="">Tất cả trạng thái</option>
+                        <option value="">Tất cả trạng thái post </option>
                         <option value="0">Nháp</option>
                         <option value="1">Chờ duyệt</option>
                         <option value="2">Đã xuất bản</option>
                         <option value="3">Ẩn</option>
                     </select>
-
-                    <button
-                        type="submit"
-                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                    >
-                        Lọc
-                    </button>
                 </form>
 
-                <button
-                    className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                    onClick={() => navigate('/posts/create')}
-                >
-                    <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                    </svg>
-                    Tạo bài mới
-                </button>
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <button
+                        className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        onClick={() => navigate('/posts/create')}
+                    >
+                        <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                        </svg>
+                        Tạo bài mới
+                    </button>
+                    {selectedIds.size > 0 && (
+                        <button
+                            onClick={handleBulkDelete}
+                            disabled={isBulkDeleting}
+                            className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-red-600 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:opacity-50"
+                        >
+                            {isBulkDeleting ? 'Đang xóa...' : `Xóa ${selectedIds.size} bài viết`}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Data Table */}
@@ -264,25 +334,53 @@ export default function PostList() {
                         <table className="min-w-full divide-y divide-gray-100">
                             <thead className="bg-gray-50">
                                 <tr>
+                                    <th scope="col" className="px-6 py-4 text-left w-12">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                            checked={data && data.items.length > 0 && selectedIds.size === data.items.length}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+
                                     <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                         Ảnh / Nội dung
                                     </th>
                                     <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                         Thời gian
                                     </th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        Trạng thái & MXH
-                                    </th>
-                                    <th scope="col" className="relative px-6 py-4">
-                                        <span className="sr-only">Hành động</span>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[200px]">
+                                        Trạng thái nền tảng
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
                                 {data?.items.map((post) => (
                                     <tr key={post.id} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (selectedIds.size > 0) {
+                                                        handleSelectPost(post.id);
+                                                    } else {
+                                                        openDeleteModal(post.id);
+                                                    }
+                                                }}
+                                                className={`p-1.5 rounded-lg transition-colors ${
+                                                    selectedIds.size > 0
+                                                        ? selectedIds.has(post.id)
+                                                            ? 'text-red-500 bg-red-50 hover:bg-red-100'
+                                                            : 'text-green-500 bg-green-50 hover:bg-green-100'
+                                                        : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                                }`}
+                                                title={selectedIds.size > 0 ? (selectedIds.has(post.id) ? "Sẽ bị xóa" : "Sẽ không xóa") : "Xóa bài đăng"}
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center">
+                                            <div className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors -ml-2" onClick={() => navigate(`/posts/edit/${post.id}`)}>
                                                 <div className="flex-shrink-0 h-14 w-14 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
                                                     {post.featuredImageUrl ? (
                                                         <SafeImage className="h-14 w-14 object-cover" src={resolveFileUrl(post.featuredImageUrl)} alt="" />
@@ -293,8 +391,8 @@ export default function PostList() {
                                                     )}
                                                 </div>
                                                 <div className="ml-4 max-w-xs md:max-w-md lg:max-w-lg">
-                                                    <div className="text-sm font-semibold text-gray-900 truncate">{post.title || 'Không có tiêu đề'}</div>
-                                                    <div className="text-sm text-gray-500 truncate mt-0.5">{post.content}</div>
+                                                    <div className="text-sm font-semibold text-gray-900 truncate hover:text-blue-600 transition-colors">{post.title || 'Không có tiêu đề'}</div>
+                                                    <div className="text-sm text-gray-500 truncate mt-0.5">{post.content?.replace(/<\/?[^>]+(>|$)/g, "")}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -304,7 +402,7 @@ export default function PostList() {
                                                 const created = formatDateTimeVN(post.createdAtUtc);
                                                 return created ? (
                                                     <div className={post.displayStartUtc ? "mb-2" : ""}>
-                                                        <span className="text-xs font-medium text-gray-500">Ngày tạo:</span>
+
                                                         <div className="text-sm text-gray-900">{created.date} <span className="text-xs text-gray-500">{created.time}</span></div>
                                                     </div>
                                                 ) : null;
@@ -327,8 +425,10 @@ export default function PostList() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col gap-3">
-                                                <div>{STATUS_BADGE[post.status] || STATUS_BADGE[0]}</div>
-                                                
+                                                {(!post.targets || post.targets.length === 0) && (
+                                                    <div>{STATUS_BADGE[post.status] || STATUS_BADGE[0]}</div>
+                                                )}
+
                                                 {/* Social targets rendering */}
                                                 {post.targets && post.targets.length > 0 && (
                                                     <div className="flex flex-wrap gap-1 mt-1">
@@ -337,14 +437,14 @@ export default function PostList() {
                                                             const colorClass = TARGET_STATUS_COLORS[t.status] || "text-gray-400 bg-gray-100";
                                                             const isError = t.status === 3;
                                                             const isSuccess = t.status === 2;
-                                                            
+
                                                             return (
-                                                                <div 
-                                                                    key={idx} 
+                                                                <div
+                                                                    key={idx}
                                                                     className={`relative group inline-flex items-center justify-center w-7 h-7 rounded-full cursor-help transition-transform hover:scale-110 ${colorClass}`}
                                                                 >
                                                                     {pInfo ? pInfo.icon : <span className="text-xs">?</span>}
-                                                                    
+
                                                                     {/* Tooltip */}
                                                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 text-xs text-white bg-gray-900 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
                                                                         <div className="font-semibold mb-0.5">{pInfo?.name || 'Mạng xã hội'}</div>
@@ -360,23 +460,6 @@ export default function PostList() {
                                                         })}
                                                     </div>
                                                 )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div className="flex justify-end gap-2 items-center">
-                                                <button
-                                                    onClick={() => navigate(`/facebook-ads/create?postTitle=${encodeURIComponent(post.title || '')}&postContent=${encodeURIComponent(post.content || '')}&postImage=${encodeURIComponent(resolveFileUrl(post.featuredImageUrl))}`)}
-                                                    className="text-indigo-600 hover:text-indigo-900 px-2 py-1 hover:bg-indigo-50 rounded-lg border border-indigo-100 transition-colors font-bold text-xs"
-                                                    title="Chạy quảng cáo Facebook Ads cho bài viết này"
-                                                >
-                                                    ⚡ Chạy Ads
-                                                </button>
-                                                <button onClick={() => navigate(`/posts/edit/${post.id}`)} className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded-lg transition-colors">
-                                                    Sửa
-                                                </button>
-                                                <button onClick={() => openDeleteModal(post.id)} className="text-red-600 hover:text-red-900 p-1.5 hover:bg-red-50 rounded-lg transition-colors">
-                                                    Xóa
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>

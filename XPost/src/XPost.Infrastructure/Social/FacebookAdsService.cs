@@ -193,7 +193,7 @@ public class FacebookAdsService : IFacebookAdsService
                 await _dbContext.SaveChangesAsync(cancellationToken);
 
                 // 2. Sync Ad Sets for this campaign
-                var adsetUrl = $"{GraphApiBase}/{metaId}/adsets?fields=id,name,billing_event,daily_budget,lifetime_budget,targeting,placements&limit=50&access_token={accessToken}";
+                var adsetUrl = $"{GraphApiBase}/{metaId}/adsets?fields=id,name,status,billing_event,daily_budget,lifetime_budget,targeting,placements&limit=50&access_token={accessToken}";
                 var adsetResponse = await client.GetAsync(adsetUrl, cancellationToken);
                 if (adsetResponse.IsSuccessStatusCode)
                 {
@@ -206,6 +206,7 @@ public class FacebookAdsService : IFacebookAdsService
                         {
                             var metaAdsetId = adsetItem.GetProperty("id").GetString()!;
                             var adsetName = adsetItem.GetProperty("name").GetString()!;
+                            var adsetStatus = adsetItem.TryGetProperty("status", out var adsetStat) ? adsetStat.GetString() ?? "ACTIVE" : "ACTIVE";
                             var billingEvent = adsetItem.TryGetProperty("billing_event", out var be) ? be.GetString() ?? "" : "";
                             
                             decimal? dailyBudget = null;
@@ -233,7 +234,8 @@ public class FacebookAdsService : IFacebookAdsService
                                     DailyBudget = dailyBudget,
                                     LifetimeBudget = lifetimeBudget,
                                     TargetingInterests = targetingStr,
-                                    Placements = placementsStr
+                                    Placements = placementsStr,
+                                    Status = adsetStatus
                                 };
                                 _dbContext.FacebookAdSets.Add(existingAdSet);
                             }
@@ -245,6 +247,7 @@ public class FacebookAdsService : IFacebookAdsService
                                 existingAdSet.LifetimeBudget = lifetimeBudget;
                                 existingAdSet.TargetingInterests = targetingStr;
                                 existingAdSet.Placements = placementsStr;
+                                existingAdSet.Status = adsetStatus;
                                 existingAdSet.UpdatedAt = DateTime.UtcNow;
                                 _dbContext.FacebookAdSets.Update(existingAdSet);
                             }
@@ -352,25 +355,32 @@ public class FacebookAdsService : IFacebookAdsService
         var accessToken = account.AccessToken;
         var actId = account.AdAccountId;
 
+        // If publishing to ACTIVE, check payment method first (before starting transaction)
+        if (dto.Status == "ACTIVE")
+        {
+            var hasPayment = await CheckPaymentMethodAsync(account.Id, cancellationToken);
+            if (!hasPayment)
+            {
+                throw new Exception("This advertising account does not have a valid payment method. To publish advertisements and start delivery, please add a payment method in Meta Business Manager.");
+            }
+        }
+
+        // Use a database transaction so that if any Meta API step fails (e.g. invalid image),
+        // the campaign/adset/ad are NOT partially saved to XPost database.
+        await using var dbTransaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             FacebookCampaign campaign;
             string metaCampaignId;
 
-            // If we are creating a draft
             var isDraft = dto.Status == "DRAFT";
 
-            // If publishing to ACTIVE, check payment method first!
-            if (dto.Status == "ACTIVE")
-            {
-                var hasPayment = await CheckPaymentMethodAsync(account.Id, cancellationToken);
-                if (!hasPayment)
-                {
-                    throw new Exception("This advertising account does not have a valid payment method. To publish advertisements and start delivery, please add a payment method in Meta Business Manager.");
-                }
-            }
+            string? newlyCreatedMetaCampaignId = null;
+            string? newlyCreatedMetaAdSetId = null;
 
-            // 1. Resolve or Create Campaign
+            // ─────────────────────────────────────────────────────────────────────────
+            // STEP 1: Resolve or Create Campaign
+            // ─────────────────────────────────────────────────────────────────────────
             if (dto.CampaignId.HasValue && dto.CampaignId.Value != Guid.Empty)
             {
                 campaign = await _dbContext.FacebookCampaigns.FindAsync(new object[] { dto.CampaignId.Value }, cancellationToken)
@@ -385,41 +395,33 @@ public class FacebookAdsService : IFacebookAdsService
                 }
                 else
                 {
-                    // Create Campaign on Meta (Using Campaign Budget Optimization - CBO)
                     var campUrl = $"{GraphApiBase}/{actId}/campaigns";
                     var campPayload = new Dictionary<string, string>
                     {
                         ["name"] = dto.Name,
                         ["objective"] = dto.Objective,
-                        ["status"] = "PAUSED", // Create in PAUSED state to prevent charging immediately during setup
+                        ["status"] = "PAUSED",
                         ["special_ad_categories"] = "[\"NONE\"]",
-                        ["daily_budget"] = ((int)dto.Budget).ToString(), // CBO enabled, budget in account currency units (VND)
+                        ["daily_budget"] = ((int)dto.Budget).ToString(),
                         ["bid_strategy"] = "LOWEST_COST_WITHOUT_CAP",
                         ["access_token"] = accessToken
                     };
 
-                    try
-                    {
-                        var campResponse = await client.PostAsync(campUrl, new FormUrlEncodedContent(campPayload), cancellationToken);
-                        var campJson = await campResponse.Content.ReadAsStringAsync(cancellationToken);
+                    var campResponse = await client.PostAsync(campUrl, new FormUrlEncodedContent(campPayload), cancellationToken);
+                    var campJson = await campResponse.Content.ReadAsStringAsync(cancellationToken);
 
-                        if (!campResponse.IsSuccessStatusCode)
-                        {
-                            _logger.LogError("Meta Campaign creation failed. Status: {Status}. Response: {Json}", campResponse.StatusCode, campJson);
-                            throw new Exception($"Meta Campaign Creation Failed: {ExtractErrorMessage(campJson)}");
-                        }
-
-                        var campResult = JsonSerializer.Deserialize<JsonElement>(campJson);
-                        metaCampaignId = campResult.GetProperty("id").GetString()!;
-                    }
-                    catch (Exception ex)
+                    if (!campResponse.IsSuccessStatusCode)
                     {
-                        _logger.LogError(ex, "Failed to create campaign on Meta.");
-                        throw;
+                        _logger.LogError("Meta Campaign creation failed. Status: {Status}. Response: {Json}", campResponse.StatusCode, campJson);
+                        throw new Exception($"Meta Campaign Creation Failed: {ExtractErrorMessage(campJson)}");
                     }
+
+                    var campResult = JsonSerializer.Deserialize<JsonElement>(campJson);
+                    metaCampaignId = campResult.GetProperty("id").GetString()!;
+                    newlyCreatedMetaCampaignId = metaCampaignId;
+                    _logger.LogInformation("Meta Campaign created: {MetaCampaignId}", metaCampaignId);
                 }
 
-                // Local Campaign Save
                 campaign = new FacebookCampaign
                 {
                     FacebookAdAccountId = account.Id,
@@ -433,13 +435,15 @@ public class FacebookAdsService : IFacebookAdsService
                     EndTimeUtc = dto.EndTimeUtc?.ToUniversalTime()
                 };
                 _dbContext.FacebookCampaigns.Add(campaign);
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); 
             }
 
             FacebookAdSet adSet;
             string metaAdSetId;
 
-            // 2. Resolve or Create Ad Set
+            // ─────────────────────────────────────────────────────────────────────────
+            // STEP 2: Resolve or Create Ad Set
+            // ─────────────────────────────────────────────────────────────────────────
             if (dto.AdSetMode == "existing" && dto.AdSetId.HasValue && dto.AdSetId.Value != Guid.Empty)
             {
                 adSet = await _dbContext.FacebookAdSets.FindAsync(new object[] { dto.AdSetId.Value }, cancellationToken)
@@ -454,18 +458,8 @@ public class FacebookAdsService : IFacebookAdsService
                 }
                 else
                 {
-                    // Create Ad Set on Meta
                     var adsetUrl = $"{GraphApiBase}/{actId}/adsets";
-                    
-                    // Setup targeting options, including the mandatory advantage_audience flag
-                    var targetingObj = new
-                    {
-                        geo_locations = new { countries = new[] { dto.TargetingLocations } },
-                        age_min = dto.TargetingAgeMin,
-                        age_max = dto.TargetingAgeMax,
-                        targeting_automation = new { advantage_audience = 0 }
-                    };
-                    var targetingJson = JsonSerializer.Serialize(targetingObj);
+                    var targetingJson = BuildTargetingJson(dto.TargetingLocations, dto.TargetingAgeMin, dto.TargetingAgeMax);
 
                     var adsetPayload = new Dictionary<string, string>
                     {
@@ -478,35 +472,24 @@ public class FacebookAdsService : IFacebookAdsService
                         ["access_token"] = accessToken
                     };
 
-                    try
-                    {
-                        var adsetResponse = await client.PostAsync(adsetUrl, new FormUrlEncodedContent(adsetPayload), cancellationToken);
-                        var adsetJson = await adsetResponse.Content.ReadAsStringAsync(cancellationToken);
-                        if (!adsetResponse.IsSuccessStatusCode)
-                        {
-                            _logger.LogError("Meta Ad Set creation failed. Status: {Status}. Response: {Json}", adsetResponse.StatusCode, adsetJson);
-                            throw new Exception($"Meta Ad Set Creation Failed: {ExtractErrorMessage(adsetJson)}");
-                        }
+                    var adsetResponse = await client.PostAsync(adsetUrl, new FormUrlEncodedContent(adsetPayload), cancellationToken);
+                    var adsetJson = await adsetResponse.Content.ReadAsStringAsync(cancellationToken);
 
-                        var adsetResult = JsonSerializer.Deserialize<JsonElement>(adsetJson);
-                        metaAdSetId = adsetResult.GetProperty("id").GetString()!;
-                    }
-                    catch (Exception ex)
+                    if (!adsetResponse.IsSuccessStatusCode)
                     {
-                        _logger.LogError(ex, "Failed to create adset on Meta.");
-                        throw;
+                        _logger.LogError("Meta Ad Set creation failed. Status: {Status}. Response: {Json}", adsetResponse.StatusCode, adsetJson);
+                        await TryRollbackMetaResourcesAsync(client, accessToken, null, newlyCreatedMetaCampaignId);
+                        throw new Exception($"Meta Ad Set Creation Failed: {ExtractErrorMessage(adsetJson)}");
                     }
+
+                    var adsetResult = JsonSerializer.Deserialize<JsonElement>(adsetJson);
+                    metaAdSetId = adsetResult.GetProperty("id").GetString()!;
+                    newlyCreatedMetaAdSetId = metaAdSetId;
+                    _logger.LogInformation("Meta AdSet created: {MetaAdSetId}", metaAdSetId);
                 }
 
-                var targetingObjLocal = new
-                {
-                    geo_locations = new { countries = new[] { dto.TargetingLocations } },
-                    age_min = dto.TargetingAgeMin,
-                    age_max = dto.TargetingAgeMax,
-                    targeting_automation = new { advantage_audience = 0 }
-                };
+                var targetingJsonLocal = BuildTargetingJson(dto.TargetingLocations, dto.TargetingAgeMin, dto.TargetingAgeMax);
 
-                // Local AdSet Save
                 adSet = new FacebookAdSet
                 {
                     FacebookCampaignId = campaign.Id,
@@ -518,137 +501,136 @@ public class FacebookAdsService : IFacebookAdsService
                     TargetingAgeMax = dto.TargetingAgeMax,
                     TargetingGenders = dto.TargetingGenders,
                     TargetingLocations = dto.TargetingLocations,
-                    TargetingInterests = JsonSerializer.Serialize(targetingObjLocal),
+                    TargetingInterests = targetingJsonLocal,
                     Placements = dto.Placements,
                     Status = dto.Status
                 };
                 _dbContext.FacebookAdSets.Add(adSet);
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken); 
             }
 
-            // 3. Create Ad if not skipped
+            // ─────────────────────────────────────────────────────────────────────────
+            // STEP 3: Create Ad (unless skipped)
+            // ─────────────────────────────────────────────────────────────────────────
             if (dto.AdMode != "skip")
             {
-                string metaAdId = isDraft ? ("draft_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12)) : ("mock_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12));
-                
+                string metaAdId = isDraft
+                    ? ("draft_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12))
+                    : ("mock_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12));
+
                 if (!isDraft)
                 {
-                    try
+                    // ── 3a. Upload image ──────────────────────────────────────────────
+                    var imageHash = "";
+                    if (string.IsNullOrEmpty(dto.FacebookPostId))
                     {
-                        // Upload Image to Meta Ad Images (Only if not using existing Facebook Post)
-                        var imageHash = "";
-                        if (string.IsNullOrEmpty(dto.FacebookPostId))
+                        if (!string.IsNullOrEmpty(dto.MediaUrl))
                         {
-                            if (!string.IsNullOrEmpty(dto.MediaUrl))
-                            {
-                                imageHash = await UploadAdImageAsync(client, actId, accessToken, dto.MediaUrl, cancellationToken);
-                            }
-
-                            if (string.IsNullOrEmpty(imageHash))
-                            {
-                                throw new Exception("Creative image upload to Meta Ad Library failed. A valid image is required.");
-                            }
+                            imageHash = await UploadAdImageAsync(client, actId, accessToken, dto.MediaUrl, cancellationToken);
                         }
 
-                        // Create Ad Creative on Meta
-                        var creativeUrl = $"{GraphApiBase}/{actId}/adcreatives";
-                        Dictionary<string, string> creativePayload;
-
-                        if (!string.IsNullOrEmpty(dto.FacebookPostId))
+                        if (string.IsNullOrEmpty(imageHash))
                         {
-                            creativePayload = new Dictionary<string, string>
-                            {
-                                ["object_story_id"] = $"{dto.PageId}_{dto.FacebookPostId}",
-                                ["name"] = dto.AdName,
-                                ["access_token"] = accessToken
-                            };
-                        }
-                        else
-                        {
-                            var creativeObj = new
-                            {
-                                name = dto.AdName,
-                                object_story_spec = new
-                                {
-                                    page_id = dto.PageId,
-                                    link_data = new
-                                    {
-                                        image_hash = imageHash,
-                                        link = dto.DestinationUrl,
-                                        message = dto.BodyText,
-                                        name = dto.Title,
-                                        call_to_action = new
-                                        {
-                                            type = dto.CallToAction,
-                                            value = new { link = dto.DestinationUrl }
-                                        }
-                                    }
-                                }
-                            };
-
-                            creativePayload = new Dictionary<string, string>
-                            {
-                                ["object_story_spec"] = JsonSerializer.Serialize(creativeObj.object_story_spec),
-                                ["name"] = dto.AdName,
-                                ["access_token"] = accessToken
-                            };
-                        }
-
-                        var creativeResponse = await client.PostAsync(creativeUrl, new FormUrlEncodedContent(creativePayload), cancellationToken);
-                        var creativeJson = await creativeResponse.Content.ReadAsStringAsync(cancellationToken);
-                        if (!creativeResponse.IsSuccessStatusCode)
-                        {
-                            throw new Exception($"Meta Ad Creative Creation Failed: {ExtractErrorMessage(creativeJson)}");
-                        }
-
-                        var creativeResult = JsonSerializer.Deserialize<JsonElement>(creativeJson);
-                        var metaCreativeId = creativeResult.GetProperty("id").GetString()!;
-
-                        // Create Ad on Meta
-                        var adUrl = $"{GraphApiBase}/{actId}/ads";
-                        var adPayload = new Dictionary<string, string>
-                        {
-                            ["name"] = dto.AdName,
-                            ["adset_id"] = metaAdSetId,
-                            ["creative"] = JsonSerializer.Serialize(new { creative_id = metaCreativeId }),
-                            ["status"] = dto.Status == "ACTIVE" ? "ACTIVE" : "PAUSED",
-                            ["access_token"] = accessToken
-                        };
-
-                        var adResponse = await client.PostAsync(adUrl, new FormUrlEncodedContent(adPayload), cancellationToken);
-                        var adJson = await adResponse.Content.ReadAsStringAsync(cancellationToken);
-                        if (!adResponse.IsSuccessStatusCode)
-                        {
-                            throw new Exception($"Meta Ad Creation Failed: {ExtractErrorMessage(adJson)}");
-                        }
-
-                        var adResult = JsonSerializer.Deserialize<JsonElement>(adJson);
-                        metaAdId = adResult.GetProperty("id").GetString()!;
-
-                        // Update campaign status to ACTIVE if the ad should be ACTIVE
-                        if (dto.Status == "ACTIVE")
-                        {
-                            // Turn campaign active on Meta
-                            var activateUrl = $"{GraphApiBase}/{metaCampaignId}";
-                            var actPayload = new Dictionary<string, string>
-                            {
-                                ["status"] = "ACTIVE",
-                                ["access_token"] = accessToken
-                            };
-                            await client.PostAsync(activateUrl, new FormUrlEncodedContent(actPayload), cancellationToken);
-                            
-                            campaign.Status = "ACTIVE";
-                            _dbContext.FacebookCampaigns.Update(campaign);
+                            _logger.LogError("Image upload failed for MediaUrl: {MediaUrl}. Rolling back Meta and DB.", dto.MediaUrl);
+                            await TryRollbackMetaResourcesAsync(client, accessToken, newlyCreatedMetaAdSetId, newlyCreatedMetaCampaignId);
+                            throw new Exception("Creative image upload to Meta Ad Library failed. A valid image is required to create the ad.");
                         }
                     }
-                    catch (Exception ex)
+
+                    // ── 3b. Create Ad Creative on Meta ────────────────────────────────
+                    var creativeUrl = $"{GraphApiBase}/{actId}/adcreatives";
+                    Dictionary<string, string> creativePayload;
+
+                    if (!string.IsNullOrEmpty(dto.FacebookPostId))
                     {
-                        _logger.LogError(ex, "Failed to create ad/creative on Meta.");
-                        throw;
+                        creativePayload = new Dictionary<string, string>
+                        {
+                            ["object_story_id"] = $"{dto.PageId}_{dto.FacebookPostId}",
+                            ["name"] = dto.AdName,
+                            ["access_token"] = accessToken
+                        };
+                    }
+                    else
+                    {
+                        var objectStorySpec = new
+                        {
+                            page_id = dto.PageId,
+                            link_data = new
+                            {
+                                image_hash = imageHash,
+                                link = dto.DestinationUrl,
+                                message = dto.BodyText,
+                                name = dto.Title,
+                                call_to_action = new
+                                {
+                                    type = dto.CallToAction,
+                                    value = new { link = dto.DestinationUrl }
+                                }
+                            }
+                        };
+                        creativePayload = new Dictionary<string, string>
+                        {
+                            ["object_story_spec"] = JsonSerializer.Serialize(objectStorySpec),
+                            ["name"] = dto.AdName,
+                            ["access_token"] = accessToken
+                        };
+                    }
+
+                    var creativeResponse = await client.PostAsync(creativeUrl, new FormUrlEncodedContent(creativePayload), cancellationToken);
+                    var creativeJson = await creativeResponse.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (!creativeResponse.IsSuccessStatusCode)
+                    {
+                        _logger.LogError("Meta Ad Creative creation failed. Response: {Json}", creativeJson);
+                        await TryRollbackMetaResourcesAsync(client, accessToken, newlyCreatedMetaAdSetId, newlyCreatedMetaCampaignId);
+                        throw new Exception($"Meta Ad Creative Creation Failed: {ExtractErrorMessage(creativeJson)}");
+                    }
+
+                    var creativeResult = JsonSerializer.Deserialize<JsonElement>(creativeJson);
+                    var metaCreativeId = creativeResult.GetProperty("id").GetString()!;
+                    _logger.LogInformation("Meta Creative created: {MetaCreativeId}", metaCreativeId);
+
+                    // ── 3c. Create Ad on Meta ─────────────────────────────────────────
+                    var adUrl = $"{GraphApiBase}/{actId}/ads";
+                    var adPayload = new Dictionary<string, string>
+                    {
+                        ["name"] = dto.AdName,
+                        ["adset_id"] = metaAdSetId,
+                        ["creative"] = JsonSerializer.Serialize(new { creative_id = metaCreativeId }),
+                        ["status"] = dto.Status == "ACTIVE" ? "ACTIVE" : "PAUSED",
+                        ["access_token"] = accessToken
+                    };
+
+                    var adResponse = await client.PostAsync(adUrl, new FormUrlEncodedContent(adPayload), cancellationToken);
+                    var adJson = await adResponse.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (!adResponse.IsSuccessStatusCode)
+                    {
+                        _logger.LogError("Meta Ad creation failed. Response: {Json}", adJson);
+                        await TryRollbackMetaResourcesAsync(client, accessToken, newlyCreatedMetaAdSetId, newlyCreatedMetaCampaignId);
+                        throw new Exception($"Meta Ad Creation Failed: {ExtractErrorMessage(adJson)}");
+                    }
+
+                    var adResult = JsonSerializer.Deserialize<JsonElement>(adJson);
+                    metaAdId = adResult.GetProperty("id").GetString()!;
+                    _logger.LogInformation("Meta Ad created: {MetaAdId}", metaAdId);
+
+                    // ── 3d. Activate campaign on Meta if requested ────────────────────
+                    if (dto.Status == "ACTIVE")
+                    {
+                        var activateUrl = $"{GraphApiBase}/{metaCampaignId}";
+                        var actPayload = new Dictionary<string, string>
+                        {
+                            ["status"] = "ACTIVE",
+                            ["access_token"] = accessToken
+                        };
+                        await client.PostAsync(activateUrl, new FormUrlEncodedContent(actPayload), cancellationToken);
+                        campaign.Status = "ACTIVE";
+                        _dbContext.FacebookCampaigns.Update(campaign);
                     }
                 }
 
-                // Local Ad Save
+                // Stage Ad in DB (inside transaction — not committed yet)
                 var ad = new FacebookAd
                 {
                     FacebookAdSetId = adSet.Id,
@@ -666,7 +648,7 @@ public class FacebookAdsService : IFacebookAdsService
             }
             else
             {
-                // If the campaign should be activated, we can activate it if Campaign status is active
+                // Ad skipped — activate campaign on Meta if requested
                 if (!isDraft && dto.Status == "ACTIVE" && campaign.Status != "ACTIVE")
                 {
                     var activateUrl = $"{GraphApiBase}/{metaCampaignId}";
@@ -676,19 +658,182 @@ public class FacebookAdsService : IFacebookAdsService
                         ["access_token"] = accessToken
                     };
                     await client.PostAsync(activateUrl, new FormUrlEncodedContent(actPayload), cancellationToken);
-                    
                     campaign.Status = "ACTIVE";
                     _dbContext.FacebookCampaigns.Update(campaign);
                 }
             }
 
+            // ── All steps succeeded → commit DB atomically ────────────────────────
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await dbTransaction.CommitAsync(cancellationToken);
+            _logger.LogInformation("Campaign creation committed successfully to XPost DB.");
             return campaign;
         }
         catch (Exception)
         {
+            // Final safety net: rollback DB if not already rolled back
+            try { await dbTransaction.RollbackAsync(cancellationToken); } catch { /* already rolled back or committed */ }
             throw;
         }
+    }
+
+    /// <summary>
+    /// Rolls back Meta resources created during a failed campaign creation attempt.
+    /// Deletes in reverse creation order: AdSet first, then Campaign.
+    /// This is best-effort — failures are logged but not re-thrown.
+    /// </summary>
+    private async Task TryRollbackMetaResourcesAsync(HttpClient client, string accessToken, string? metaAdSetId, string? metaCampaignId)
+    {
+        // Delete AdSet first (child before parent)
+        if (!string.IsNullOrEmpty(metaAdSetId))
+        {
+            try
+            {
+                var url = $"{GraphApiBase}/{metaAdSetId}?access_token={Uri.EscapeDataString(accessToken)}";
+                var res = await client.DeleteAsync(url);
+                if (res.IsSuccessStatusCode)
+                    _logger.LogInformation("Meta AdSet {AdSetId} deleted successfully during rollback.", metaAdSetId);
+                else
+                    _logger.LogWarning("Could not delete Meta AdSet {AdSetId} during rollback (Status: {Status}). Manual cleanup may be required.", metaAdSetId, res.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Exception while deleting Meta AdSet {AdSetId} during rollback.", metaAdSetId);
+            }
+        }
+
+        // Then delete Campaign (parent)
+        if (!string.IsNullOrEmpty(metaCampaignId))
+        {
+            try
+            {
+                var url = $"{GraphApiBase}/{metaCampaignId}?access_token={Uri.EscapeDataString(accessToken)}";
+                var res = await client.DeleteAsync(url);
+                if (res.IsSuccessStatusCode)
+                    _logger.LogInformation("Meta Campaign {CampaignId} deleted successfully during rollback.", metaCampaignId);
+                else
+                    _logger.LogWarning("Could not delete Meta Campaign {CampaignId} during rollback (Status: {Status}). Manual cleanup may be required.", metaCampaignId, res.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Exception while deleting Meta Campaign {CampaignId} during rollback.", metaCampaignId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds the Meta API targeting JSON string from the stored targetingLocations value.
+    /// If targetingLocations is a JSON array of city objects (from frontend mapping), sends cities/regions.
+    /// If it is a plain country code (e.g. "VN"), sends countries.
+    /// </summary>
+    private string BuildTargetingJson(string targetingLocations, int ageMin, int ageMax)
+    {
+        object geoLocations;
+
+        // Detect JSON array format: [{"key":"1581130","name":"Hanoi","type":"city","country_code":"VN","radius":35}]
+        var trimmed = targetingLocations?.Trim() ?? "VN";
+        if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+        {
+            try
+            {
+                var cityArray = JsonSerializer.Deserialize<JsonElement>(trimmed);
+                var citiesList = new List<object>();
+                var regionsList = new List<object>();
+                var customLocationsList = new List<object>();
+
+                foreach (var cityEl in cityArray.EnumerateArray())
+                {
+                    var key = cityEl.TryGetProperty("key", out var kProp) ? kProp.GetString() : null;
+                    var name = cityEl.TryGetProperty("name", out var nProp) ? nProp.GetString() : null;
+                    var type = cityEl.TryGetProperty("type", out var tProp) ? tProp.GetString() : "city";
+                    var cc = cityEl.TryGetProperty("country_code", out var ccProp) ? ccProp.GetString() : "VN";
+
+                    int? radius = null;
+                    if (cityEl.TryGetProperty("radius", out var rProp))
+                    {
+                        if (rProp.ValueKind == JsonValueKind.Number)
+                            radius = rProp.GetInt32();
+                        else if (rProp.ValueKind == JsonValueKind.String && int.TryParse(rProp.GetString(), out var rVal))
+                            radius = rVal;
+                    }
+
+                    double? lat = null;
+                    if (cityEl.TryGetProperty("lat", out var latProp))
+                    {
+                        if (latProp.ValueKind == JsonValueKind.Number) lat = latProp.GetDouble();
+                        else if (latProp.ValueKind == JsonValueKind.String && double.TryParse(latProp.GetString(), out var latVal)) lat = latVal;
+                    }
+
+                    double? lng = null;
+                    if (cityEl.TryGetProperty("lng", out var lngProp))
+                    {
+                        if (lngProp.ValueKind == JsonValueKind.Number) lng = lngProp.GetDouble();
+                        else if (lngProp.ValueKind == JsonValueKind.String && double.TryParse(lngProp.GetString(), out var lngVal)) lng = lngVal;
+                    }
+
+                    if ((type == "custom" || (radius.HasValue && radius.Value > 0)) && lat.HasValue && lng.HasValue)
+                    {
+                        customLocationsList.Add(new
+                        {
+                            latitude = lat.Value,
+                            longitude = lng.Value,
+                            radius = radius.Value > 0 ? radius.Value : 35,
+                            distance_unit = "kilometer",
+                            name = name ?? "Custom Location"
+                        });
+                    }
+                    else if (!string.IsNullOrEmpty(key) && key != "VN")
+                    {
+                        if (type == "region")
+                        {
+                            regionsList.Add(new { key, name = name ?? key, country_code = cc });
+                        }
+                        else
+                        {
+                            citiesList.Add(new { key, name = name ?? key, country_code = cc });
+                        }
+                    }
+                }
+
+                if (citiesList.Count > 0 || regionsList.Count > 0 || customLocationsList.Count > 0)
+                {
+                    var geoObj = new Dictionary<string, object>();
+                    if (citiesList.Count > 0) geoObj["cities"] = citiesList;
+                    if (regionsList.Count > 0) geoObj["regions"] = regionsList;
+                    if (customLocationsList.Count > 0) geoObj["custom_locations"] = customLocationsList;
+
+                    geoLocations = geoObj;
+                    _logger.LogInformation("Targeting by locations: {Cities} cities, {Regions} regions, {Custom} custom locations parsed.", 
+                        citiesList.Count, regionsList.Count, customLocationsList.Count);
+                }
+                else
+                {
+                    // Fallback to country
+                    geoLocations = new { countries = new[] { "VN" } };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not parse targetingLocations JSON: {Value}. Falling back to VN.", trimmed);
+                geoLocations = new { countries = new[] { "VN" } };
+            }
+        }
+        else
+        {
+            // Plain country code (e.g. "VN")
+            var code = string.IsNullOrWhiteSpace(trimmed) ? "VN" : trimmed;
+            geoLocations = new { countries = new[] { code } };
+        }
+
+        var targetingObj = new
+        {
+            geo_locations = geoLocations,
+            age_min = ageMin,
+            age_max = ageMax,
+            targeting_automation = new { advantage_audience = 0 }
+        };
+
+        return JsonSerializer.Serialize(targetingObj);
     }
 
     private async Task<string> UploadAdImageAsync(HttpClient client, string actId, string accessToken, string imageUrl, CancellationToken ct)
@@ -881,6 +1026,61 @@ public class FacebookAdsService : IFacebookAdsService
         return true;
     }
 
+    public async Task<FacebookCampaign> UpdateCampaignAsync(Guid campaignId, UpdateCampaignDto dto, CancellationToken cancellationToken = default)
+    {
+        var campaign = await _dbContext.FacebookCampaigns
+            .Include(x => x.AdAccount)
+            .FirstOrDefaultAsync(x => x.Id == campaignId, cancellationToken);
+
+        if (campaign == null)
+            throw new ArgumentException("Campaign not found");
+
+        // Update local DB fields
+        if (!string.IsNullOrEmpty(dto.Name)) campaign.Name = dto.Name;
+        if (!string.IsNullOrEmpty(dto.Objective)) campaign.Objective = dto.Objective;
+        if (!string.IsNullOrEmpty(dto.Status)) campaign.Status = dto.Status;
+        if (dto.Budget > 0) campaign.Budget = dto.Budget;
+        if (dto.StartTimeUtc.HasValue) campaign.StartTimeUtc = dto.StartTimeUtc.Value;
+        campaign.EndTimeUtc = dto.EndTimeUtc;
+        campaign.UpdatedAt = DateTime.UtcNow;
+
+        // Sync updates to Meta Graph API
+        if (!string.IsNullOrEmpty(campaign.MetaCampaignId) && 
+            !campaign.MetaCampaignId.StartsWith("draft_camp_") && 
+            !campaign.MetaCampaignId.StartsWith("mock_camp_") &&
+            !campaign.MetaCampaignId.StartsWith("draft_campaign_") && 
+            !campaign.MetaCampaignId.StartsWith("mock_campaign_") &&
+            campaign.AdAccount != null &&
+            !string.IsNullOrEmpty(campaign.AdAccount.AccessToken))
+        {
+            var client = _httpClientFactory.CreateClient();
+            var updateUrl = $"{GraphApiBase}/{campaign.MetaCampaignId}";
+            var payload = new Dictionary<string, string>
+            {
+                ["name"] = campaign.Name,
+                ["status"] = campaign.Status,
+                ["access_token"] = campaign.AdAccount.AccessToken
+            };
+
+            if (campaign.Budget > 0)
+            {
+                payload["daily_budget"] = ((int)campaign.Budget).ToString();
+            }
+
+            var response = await client.PostAsync(updateUrl, new FormUrlEncodedContent(payload), cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to update campaign {MetaId} on Meta. {Err}", campaign.MetaCampaignId, err);
+                throw new Exception($"Meta Campaign Update Failed: {ExtractErrorMessage(err)}");
+            }
+        }
+
+        _dbContext.FacebookCampaigns.Update(campaign);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return campaign;
+    }
+
     public async Task<bool> DeleteAdSetAsync(Guid adSetId, CancellationToken cancellationToken = default)
     {
         var adSet = await _dbContext.FacebookAdSets
@@ -923,6 +1123,366 @@ public class FacebookAdsService : IFacebookAdsService
         await _dbContext.SaveChangesAsync(cancellationToken);
         
         return true;
+    }
+
+    public async Task<bool> DeleteAdAsync(Guid adId, CancellationToken cancellationToken = default)
+    {
+        var ad = await _dbContext.FacebookAds
+            .IgnoreQueryFilters()
+            .Include(x => x.AdSet)
+                .ThenInclude(s => s.Campaign)
+                    .ThenInclude(c => c.AdAccount)
+            .FirstOrDefaultAsync(x => x.Id == adId, cancellationToken);
+
+        if (ad == null)
+            return false;
+
+        if (!string.IsNullOrEmpty(ad.MetaAdId) && 
+            !ad.MetaAdId.StartsWith("draft_ad_") && 
+            !ad.MetaAdId.StartsWith("mock_ad_") &&
+            ad.AdSet?.Campaign?.AdAccount != null && 
+            !string.IsNullOrEmpty(ad.AdSet.Campaign.AdAccount.AccessToken))
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var deleteUrl = $"{GraphApiBase}/{ad.MetaAdId}?access_token={ad.AdSet.Campaign.AdAccount.AccessToken}";
+                var response = await client.DeleteAsync(deleteUrl, cancellationToken);
+                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to delete ad {MetaId} from Meta. Status: {Status}. Response: {Response}", 
+                        ad.MetaAdId, response.StatusCode, responseJson);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting ad {MetaId} from Meta", ad.MetaAdId);
+            }
+        }
+
+        _dbContext.FacebookAds.Remove(ad);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        
+        return true;
+    }
+
+    public async Task<FacebookAdSet> UpdateAdSetAsync(Guid adSetId, UpdateAdSetDto dto, CancellationToken cancellationToken = default)
+    {
+        var adSet = await _dbContext.FacebookAdSets
+            .Include(x => x.Campaign)
+                .ThenInclude(c => c.AdAccount)
+            .FirstOrDefaultAsync(x => x.Id == adSetId, cancellationToken);
+
+        if (adSet == null)
+            throw new ArgumentException("AdSet not found");
+
+        adSet.Name = dto.Name;
+        adSet.DailyBudget = dto.DailyBudget;
+        adSet.TargetingAgeMin = dto.TargetingAgeMin;
+        adSet.TargetingAgeMax = dto.TargetingAgeMax;
+        adSet.TargetingLocations = dto.TargetingLocations;
+        if (!string.IsNullOrEmpty(dto.Status)) adSet.Status = dto.Status;
+        adSet.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrEmpty(adSet.MetaAdSetId) && 
+            !adSet.MetaAdSetId.StartsWith("draft_adset_") && 
+            !adSet.MetaAdSetId.StartsWith("mock_adset_") &&
+            adSet.Campaign?.AdAccount != null)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var updateUrl = $"{GraphApiBase}/{adSet.MetaAdSetId}";
+            var targetingJson = BuildTargetingJson(adSet.TargetingLocations, adSet.TargetingAgeMin, adSet.TargetingAgeMax);
+            
+            var payload = new Dictionary<string, string>
+            {
+                ["name"] = adSet.Name,
+                ["targeting"] = targetingJson,
+                ["status"] = adSet.Status,
+                ["access_token"] = adSet.Campaign.AdAccount.AccessToken
+            };
+
+            if (adSet.DailyBudget > 0 && (adSet.Campaign == null || adSet.Campaign.Budget <= 0))
+            {
+                payload["daily_budget"] = ((int)adSet.DailyBudget).ToString();
+            }
+
+            var response = await client.PostAsync(updateUrl, new FormUrlEncodedContent(payload), cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Failed to update ad set {MetaId}. {Err}", adSet.MetaAdSetId, err);
+                throw new Exception($"Meta AdSet Update Failed: {ExtractErrorMessage(err)}");
+            }
+        }
+
+        _dbContext.FacebookAdSets.Update(adSet);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return adSet;
+    }
+
+    public async Task<FacebookAd> UpdateAdAsync(Guid adId, UpdateFacebookAdDto dto, CancellationToken cancellationToken = default)
+    {
+        var ad = await _dbContext.FacebookAds
+            .Include(x => x.AdSet)
+                .ThenInclude(s => s.Campaign)
+                    .ThenInclude(c => c.AdAccount)
+            .FirstOrDefaultAsync(x => x.Id == adId, cancellationToken);
+
+        if (ad == null)
+            throw new ArgumentException("Ad not found");
+
+        ad.Name = dto.Name;
+        ad.Title = dto.Title;
+        ad.BodyText = dto.BodyText;
+        ad.MediaUrl = dto.MediaUrl;
+        ad.DestinationUrl = dto.DestinationUrl;
+        ad.CallToAction = dto.CallToAction;
+        ad.FacebookPostId = dto.FacebookPostId;
+        if (!string.IsNullOrEmpty(dto.Status)) ad.Status = dto.Status;
+        ad.UpdatedAt = DateTime.UtcNow;
+
+        var account = ad.AdSet?.Campaign?.AdAccount;
+
+        if (!string.IsNullOrEmpty(ad.MetaAdId) && 
+            !ad.MetaAdId.StartsWith("draft_ad_") && 
+            !ad.MetaAdId.StartsWith("mock_ad_") &&
+            account != null)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var actId = account.AdAccountId;
+            var accessToken = account.AccessToken;
+
+            var imageHash = "";
+            if (string.IsNullOrEmpty(ad.FacebookPostId))
+            {
+                if (!string.IsNullOrEmpty(ad.MediaUrl))
+                {
+                    imageHash = await UploadAdImageAsync(client, actId, accessToken, ad.MediaUrl, cancellationToken);
+                }
+
+                if (string.IsNullOrEmpty(imageHash))
+                {
+                    throw new Exception("Creative image upload to Meta Ad Library failed. A valid image is required.");
+                }
+            }
+
+            var creativeUrl = $"{GraphApiBase}/{actId}/adcreatives";
+            Dictionary<string, string> creativePayload;
+
+            if (!string.IsNullOrEmpty(ad.FacebookPostId))
+            {
+                creativePayload = new Dictionary<string, string>
+                {
+                    ["object_story_id"] = $"{ad.AdSet!.Campaign!.PageId}_{ad.FacebookPostId}",
+                    ["name"] = ad.Name,
+                    ["access_token"] = accessToken
+                };
+            }
+            else
+            {
+                var creativeObj = new
+                {
+                    name = ad.Name,
+                    object_story_spec = new
+                    {
+                        page_id = ad.AdSet!.Campaign!.PageId ?? "102049281",
+                        link_data = new
+                        {
+                            image_hash = imageHash,
+                            link = ad.DestinationUrl,
+                            message = ad.BodyText,
+                            name = ad.Title,
+                            call_to_action = new
+                            {
+                                type = ad.CallToAction,
+                                value = new { link = ad.DestinationUrl }
+                            }
+                        }
+                    }
+                };
+
+                creativePayload = new Dictionary<string, string>
+                {
+                    ["object_story_spec"] = JsonSerializer.Serialize(creativeObj.object_story_spec),
+                    ["name"] = ad.Name,
+                    ["access_token"] = accessToken
+                };
+            }
+
+            var creativeResponse = await client.PostAsync(creativeUrl, new FormUrlEncodedContent(creativePayload), cancellationToken);
+            var creativeJson = await creativeResponse.Content.ReadAsStringAsync(cancellationToken);
+            if (!creativeResponse.IsSuccessStatusCode)
+            {
+                throw new Exception($"Meta Ad Creative Creation Failed: {ExtractErrorMessage(creativeJson)}");
+            }
+
+            var creativeResult = JsonSerializer.Deserialize<JsonElement>(creativeJson);
+            var newCreativeId = creativeResult.GetProperty("id").GetString()!;
+
+            var updateAdUrl = $"{GraphApiBase}/{ad.MetaAdId}";
+            var adPayload = new Dictionary<string, string>
+            {
+                ["name"] = ad.Name,
+                ["creative"] = JsonSerializer.Serialize(new { creative_id = newCreativeId }),
+                ["status"] = ad.Status,
+                ["access_token"] = accessToken
+            };
+
+            var adResponse = await client.PostAsync(updateAdUrl, new FormUrlEncodedContent(adPayload), cancellationToken);
+            var adJson = await adResponse.Content.ReadAsStringAsync(cancellationToken);
+            if (!adResponse.IsSuccessStatusCode)
+            {
+                throw new Exception($"Meta Ad Update Failed: {ExtractErrorMessage(adJson)}");
+            }
+        }
+
+        _dbContext.FacebookAds.Update(ad);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return ad;
+    }
+
+    public async Task<FacebookAd> MoveAdAsync(Guid adId, Guid newAdSetId, CancellationToken cancellationToken = default)
+    {
+        var ad = await _dbContext.FacebookAds
+            .Include(x => x.AdSet)
+                .ThenInclude(s => s.Campaign)
+                    .ThenInclude(c => c.AdAccount)
+            .FirstOrDefaultAsync(x => x.Id == adId, cancellationToken);
+
+        if (ad == null)
+            throw new ArgumentException("Ad not found");
+
+        if (ad.FacebookAdSetId == newAdSetId)
+            return ad; // Nothing to do
+
+        var newAdSet = await _dbContext.FacebookAdSets
+            .Include(s => s.Campaign)
+            .FirstOrDefaultAsync(x => x.Id == newAdSetId, cancellationToken);
+
+        if (newAdSet == null)
+            throw new ArgumentException("Destination Ad Set not found");
+
+        var account = ad.AdSet?.Campaign?.AdAccount;
+
+        // If the ad is already published to Meta, we must delete it and recreate it
+        if (!string.IsNullOrEmpty(ad.MetaAdId) && 
+            !ad.MetaAdId.StartsWith("draft_ad_") && 
+            !ad.MetaAdId.StartsWith("mock_ad_") &&
+            account != null)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var actId = account.AdAccountId;
+            var accessToken = account.AccessToken;
+
+            // 1. Recreate Ad Creative & Ad in new Ad Set
+            var imageHash = "";
+            if (string.IsNullOrEmpty(ad.FacebookPostId))
+            {
+                if (!string.IsNullOrEmpty(ad.MediaUrl))
+                {
+                    imageHash = await UploadAdImageAsync(client, actId, accessToken, ad.MediaUrl, cancellationToken);
+                }
+
+                if (string.IsNullOrEmpty(imageHash))
+                {
+                    throw new Exception("Creative image upload to Meta failed during move.");
+                }
+            }
+
+            var creativeUrl = $"{GraphApiBase}/{actId}/adcreatives";
+            Dictionary<string, string> creativePayload;
+
+            if (!string.IsNullOrEmpty(ad.FacebookPostId))
+            {
+                creativePayload = new Dictionary<string, string>
+                {
+                    ["object_story_id"] = $"{ad.AdSet!.Campaign!.PageId}_{ad.FacebookPostId}",
+                    ["name"] = ad.Name,
+                    ["access_token"] = accessToken
+                };
+            }
+            else
+            {
+                var creativeObj = new
+                {
+                    name = ad.Name,
+                    object_story_spec = new
+                    {
+                        page_id = ad.AdSet!.Campaign!.PageId ?? "102049281",
+                        link_data = new
+                        {
+                            image_hash = imageHash,
+                            link = ad.DestinationUrl,
+                            message = ad.BodyText,
+                            name = ad.Title,
+                            call_to_action = new
+                            {
+                                type = ad.CallToAction,
+                                value = new { link = ad.DestinationUrl }
+                            }
+                        }
+                    }
+                };
+
+                creativePayload = new Dictionary<string, string>
+                {
+                    ["object_story_spec"] = JsonSerializer.Serialize(creativeObj.object_story_spec),
+                    ["name"] = ad.Name,
+                    ["access_token"] = accessToken
+                };
+            }
+
+            var creativeResponse = await client.PostAsync(creativeUrl, new FormUrlEncodedContent(creativePayload), cancellationToken);
+            var creativeJson = await creativeResponse.Content.ReadAsStringAsync(cancellationToken);
+            if (!creativeResponse.IsSuccessStatusCode)
+            {
+                throw new Exception($"Meta Ad Creative Creation Failed during move: {ExtractErrorMessage(creativeJson)}");
+            }
+
+            var creativeResult = JsonSerializer.Deserialize<JsonElement>(creativeJson);
+            var newCreativeId = creativeResult.GetProperty("id").GetString()!;
+
+            // 2. Create new Ad in Meta
+            var adUrl = $"{GraphApiBase}/{actId}/ads";
+            var adPayload = new Dictionary<string, string>
+            {
+                ["name"] = ad.Name,
+                ["adset_id"] = newAdSet.MetaAdSetId,
+                ["creative"] = JsonSerializer.Serialize(new { creative_id = newCreativeId }),
+                ["status"] = ad.Status == "ACTIVE" ? "ACTIVE" : "PAUSED",
+                ["access_token"] = accessToken
+            };
+
+            var adResponse = await client.PostAsync(adUrl, new FormUrlEncodedContent(adPayload), cancellationToken);
+            var adJson = await adResponse.Content.ReadAsStringAsync(cancellationToken);
+            if (!adResponse.IsSuccessStatusCode)
+            {
+                throw new Exception($"Meta Ad Creation Failed during move: {ExtractErrorMessage(adJson)}");
+            }
+
+            var adResult = JsonSerializer.Deserialize<JsonElement>(adJson);
+            var newMetaAdId = adResult.GetProperty("id").GetString()!;
+
+            // 3. Delete old Ad from Meta
+            var deleteUrl = $"{GraphApiBase}/{ad.MetaAdId}?access_token={accessToken}";
+            var deleteResponse = await client.DeleteAsync(deleteUrl, cancellationToken);
+            if (!deleteResponse.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to delete old Meta Ad {OldAdId} during move. Status code: {StatusCode}", ad.MetaAdId, deleteResponse.StatusCode);
+            }
+
+            ad.MetaAdId = newMetaAdId;
+        }
+
+        // Update local DB
+        ad.FacebookAdSetId = newAdSet.Id;
+        ad.UpdatedAt = DateTime.UtcNow;
+        _dbContext.FacebookAds.Update(ad);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return ad;
     }
 
     public async Task SyncInsightsAsync(Guid adAccountId, CancellationToken cancellationToken = default)
@@ -1157,14 +1717,7 @@ public class FacebookAdsService : IFacebookAdsService
                         var adsetUrl = $"{GraphApiBase}/{actId}/adsets";
                         
                         // Parse or fallback targeting options
-                        var targetingObj = new
-                        {
-                            geo_locations = new { countries = new[] { adSet.TargetingLocations } },
-                            age_min = adSet.TargetingAgeMin,
-                            age_max = adSet.TargetingAgeMax,
-                            targeting_automation = new { advantage_audience = 0 }
-                        };
-                        var targetingJson = JsonSerializer.Serialize(targetingObj);
+                        var targetingJson = BuildTargetingJson(adSet.TargetingLocations, adSet.TargetingAgeMin, adSet.TargetingAgeMax);
 
                         var adSetPostId = adSet.Ads.FirstOrDefault(a => !string.IsNullOrEmpty(a.FacebookPostId))?.FacebookPostId;
                         var adsetPayload = new Dictionary<string, string>
@@ -1363,7 +1916,7 @@ public class FacebookAdsService : IFacebookAdsService
             }
             else
             {
-                // Already synced on Facebook. Just toggle statuses to targetStatus (ACTIVE/PAUSED) on Meta and DB!
+                // Already synced on Facebook. Just toggle campaign status, and process all adsets/ads.
                 if (!campaign.MetaCampaignId.StartsWith("mock_camp_"))
                 {
                     var toggleUrl = $"{GraphApiBase}/{campaign.MetaCampaignId}";
@@ -1380,35 +1933,187 @@ public class FacebookAdsService : IFacebookAdsService
 
                 foreach (var adSet in campaign.AdSets)
                 {
-                    if (!adSet.MetaAdSetId.StartsWith("mock_adset_"))
+                    string realMetaAdSetId = "";
+                    if (adSet.MetaAdSetId.StartsWith("draft_adset_"))
                     {
-                        var adsetToggleUrl = $"{GraphApiBase}/{adSet.MetaAdSetId}";
-                        var adsetTogglePayload = new Dictionary<string, string>
+                        // Create Ad Set on Meta
+                        var adsetUrl = $"{GraphApiBase}/{actId}/adsets";
+                        var targetingJson = BuildTargetingJson(adSet.TargetingLocations, adSet.TargetingAgeMin, adSet.TargetingAgeMax);
+                        var adSetPostId = adSet.Ads.FirstOrDefault(a => !string.IsNullOrEmpty(a.FacebookPostId))?.FacebookPostId;
+                        
+                        var adsetPayload = new Dictionary<string, string>
                         {
+                            ["name"] = adSet.Name,
+                            ["campaign_id"] = campaign.MetaCampaignId,
+                            ["billing_event"] = adSet.BillingEvent,
+                            ["optimization_goal"] = ResolveOptimizationGoal(campaign.Objective, adSetPostId),
+                            ["targeting"] = targetingJson,
                             ["status"] = targetStatus == "ACTIVE" ? "ACTIVE" : "PAUSED",
                             ["access_token"] = accessToken
                         };
-                        await client.PostAsync(adsetToggleUrl, new FormUrlEncodedContent(adsetTogglePayload), cancellationToken);
-                    }
 
-                    adSet.Status = targetStatus;
-                    _dbContext.FacebookAdSets.Update(adSet);
+                        try
+                        {
+                            var adsetResponse = await client.PostAsync(adsetUrl, new FormUrlEncodedContent(adsetPayload), cancellationToken);
+                            var adsetJson = await adsetResponse.Content.ReadAsStringAsync(cancellationToken);
+                            if (!adsetResponse.IsSuccessStatusCode)
+                            {
+                                throw new Exception($"Meta Ad Set Creation Failed: {ExtractErrorMessage(adsetJson)}");
+                            }
+                            var adsetResult = JsonSerializer.Deserialize<JsonElement>(adsetJson);
+                            realMetaAdSetId = adsetResult.GetProperty("id").GetString()!;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to create adset on Meta.");
+                            throw;
+                        }
+
+                        adSet.MetaAdSetId = realMetaAdSetId;
+                        adSet.Status = targetStatus;
+                        _dbContext.FacebookAdSets.Update(adSet);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                    }
+                    else
+                    {
+                        realMetaAdSetId = adSet.MetaAdSetId;
+                        adSet.Status = targetStatus;
+                        
+                        if (targetStatus == "ACTIVE" && !realMetaAdSetId.StartsWith("mock_adset_"))
+                        {
+                            var toggleUrl = $"{GraphApiBase}/{realMetaAdSetId}";
+                            var togglePayload = new Dictionary<string, string>
+                            {
+                                ["status"] = "ACTIVE",
+                                ["access_token"] = accessToken
+                            };
+                            await client.PostAsync(toggleUrl, new FormUrlEncodedContent(togglePayload), cancellationToken);
+                        }
+                        _dbContext.FacebookAdSets.Update(adSet);
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                    }
 
                     foreach (var ad in adSet.Ads)
                     {
-                        if (!ad.MetaAdId.StartsWith("mock_ad_"))
+                        if (ad.MetaAdId.StartsWith("draft_ad_"))
                         {
-                            var adToggleUrl = $"{GraphApiBase}/{ad.MetaAdId}";
-                            var adTogglePayload = new Dictionary<string, string>
+                            string realMetaAdId;
+                            try
                             {
-                                ["status"] = targetStatus == "ACTIVE" ? "ACTIVE" : "PAUSED",
-                                ["access_token"] = accessToken
-                            };
-                            await client.PostAsync(adToggleUrl, new FormUrlEncodedContent(adTogglePayload), cancellationToken);
-                        }
+                                var imageHash = "";
+                                if (string.IsNullOrEmpty(ad.FacebookPostId))
+                                {
+                                    if (!string.IsNullOrEmpty(ad.MediaUrl))
+                                    {
+                                        imageHash = await UploadAdImageAsync(client, actId, accessToken, ad.MediaUrl, cancellationToken);
+                                    }
 
-                        ad.Status = targetStatus;
-                        _dbContext.FacebookAds.Update(ad);
+                                    if (string.IsNullOrEmpty(imageHash))
+                                    {
+                                        throw new Exception("Creative image upload to Meta Ad Library failed. A valid image is required.");
+                                    }
+                                }
+
+                                var creativeUrl = $"{GraphApiBase}/{actId}/adcreatives";
+                                Dictionary<string, string> creativePayload;
+
+                                if (!string.IsNullOrEmpty(ad.FacebookPostId))
+                                {
+                                    creativePayload = new Dictionary<string, string>
+                                    {
+                                        ["object_story_id"] = $"{campaign.PageId}_{ad.FacebookPostId}",
+                                        ["name"] = ad.Name,
+                                        ["access_token"] = accessToken
+                                    };
+                                }
+                                else
+                                {
+                                    var creativeObj = new
+                                    {
+                                        name = ad.Name,
+                                        object_story_spec = new
+                                        {
+                                            page_id = campaign.PageId ?? "102049281",
+                                            link_data = new
+                                            {
+                                                image_hash = imageHash,
+                                                link = ad.DestinationUrl,
+                                                message = ad.BodyText,
+                                                name = ad.Title,
+                                                call_to_action = new
+                                                {
+                                                    type = ad.CallToAction,
+                                                    value = new { link = ad.DestinationUrl }
+                                                }
+                                            }
+                                        }
+                                    };
+
+                                    creativePayload = new Dictionary<string, string>
+                                    {
+                                        ["object_story_spec"] = JsonSerializer.Serialize(creativeObj.object_story_spec),
+                                        ["name"] = ad.Name,
+                                        ["access_token"] = accessToken
+                                    };
+                                }
+
+                                var creativeResponse = await client.PostAsync(creativeUrl, new FormUrlEncodedContent(creativePayload), cancellationToken);
+                                var creativeJson = await creativeResponse.Content.ReadAsStringAsync(cancellationToken);
+                                if (!creativeResponse.IsSuccessStatusCode)
+                                {
+                                    throw new Exception($"Meta Ad Creative Creation Failed: {ExtractErrorMessage(creativeJson)}");
+                                }
+
+                                var creativeResult = JsonSerializer.Deserialize<JsonElement>(creativeJson);
+                                var metaCreativeId = creativeResult.GetProperty("id").GetString()!;
+
+                                var adUrl = $"{GraphApiBase}/{actId}/ads";
+                                var adPayload = new Dictionary<string, string>
+                                {
+                                    ["name"] = ad.Name,
+                                    ["adset_id"] = realMetaAdSetId,
+                                    ["creative"] = JsonSerializer.Serialize(new { creative_id = metaCreativeId }),
+                                    ["status"] = targetStatus == "ACTIVE" ? "ACTIVE" : "PAUSED",
+                                    ["access_token"] = accessToken
+                                };
+
+                                var adResponse = await client.PostAsync(adUrl, new FormUrlEncodedContent(adPayload), cancellationToken);
+                                var adJson = await adResponse.Content.ReadAsStringAsync(cancellationToken);
+                                if (!adResponse.IsSuccessStatusCode)
+                                {
+                                    throw new Exception($"Meta Ad Creation Failed: {ExtractErrorMessage(adJson)}");
+                                }
+
+                                var adResult = JsonSerializer.Deserialize<JsonElement>(adJson);
+                                realMetaAdId = adResult.GetProperty("id").GetString()!;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to create ad creative/ad on Meta during sync.");
+                                throw;
+                            }
+
+                            ad.MetaAdId = realMetaAdId;
+                            ad.Status = targetStatus;
+                            _dbContext.FacebookAds.Update(ad);
+                            await _dbContext.SaveChangesAsync(cancellationToken);
+                        }
+                        else
+                        {
+                            ad.Status = targetStatus;
+                            if (targetStatus == "ACTIVE" && !ad.MetaAdId.StartsWith("mock_ad_"))
+                            {
+                                var toggleUrl = $"{GraphApiBase}/{ad.MetaAdId}";
+                                var togglePayload = new Dictionary<string, string>
+                                {
+                                    ["status"] = "ACTIVE",
+                                    ["access_token"] = accessToken
+                                };
+                                await client.PostAsync(toggleUrl, new FormUrlEncodedContent(togglePayload), cancellationToken);
+                            }
+                            _dbContext.FacebookAds.Update(ad);
+                            await _dbContext.SaveChangesAsync(cancellationToken);
+                        }
                     }
                 }
             }
@@ -1558,5 +2263,229 @@ public class FacebookAdsService : IFacebookAdsService
                 PermalinkUrl = "https://facebook.com/109283019283_109283019283333"
             }
         };
+    }
+
+    public async Task<List<FacebookCampaign>> DuplicateCampaignAsync(Guid campaignId, int count, CancellationToken cancellationToken = default)
+    {
+        var campaign = await _dbContext.FacebookCampaigns
+            .Include(c => c.AdSets)
+                .ThenInclude(s => s.Ads)
+            .FirstOrDefaultAsync(c => c.Id == campaignId, cancellationToken);
+
+        if (campaign == null)
+            throw new ArgumentException("Campaign not found");
+
+        var duplicatedCampaigns = new List<FacebookCampaign>();
+
+        for (int i = 1; i <= count; i++)
+        {
+            var suffix = count > 1 ? $" - Bản sao ({i})" : " - Bản sao";
+            var newCampaign = new FacebookCampaign
+            {
+                FacebookAdAccountId = campaign.FacebookAdAccountId,
+                MetaCampaignId = "draft_camp_" + Guid.NewGuid().ToString("N").Substring(0, 12),
+                Name = campaign.Name + suffix,
+                Objective = campaign.Objective,
+                Status = "DRAFT",
+                PageId = campaign.PageId,
+                Budget = campaign.Budget,
+                StartTimeUtc = DateTime.UtcNow,
+                EndTimeUtc = campaign.EndTimeUtc,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            foreach (var adSet in campaign.AdSets)
+            {
+                var newAdSet = new FacebookAdSet
+                {
+                    MetaAdSetId = "draft_adset_" + Guid.NewGuid().ToString("N").Substring(0, 12),
+                    Name = adSet.Name + suffix,
+                    BillingEvent = adSet.BillingEvent,
+                    DailyBudget = adSet.DailyBudget,
+                    LifetimeBudget = adSet.LifetimeBudget,
+                    TargetingAgeMin = adSet.TargetingAgeMin,
+                    TargetingAgeMax = adSet.TargetingAgeMax,
+                    TargetingGenders = adSet.TargetingGenders,
+                    TargetingLocations = adSet.TargetingLocations,
+                    TargetingInterests = adSet.TargetingInterests,
+                    Placements = adSet.Placements,
+                    Status = "DRAFT",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                foreach (var ad in adSet.Ads)
+                {
+                    var newAd = new FacebookAd
+                    {
+                        MetaAdId = "draft_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12),
+                        Name = ad.Name + suffix,
+                        Title = ad.Title,
+                        BodyText = ad.BodyText,
+                        MediaUrl = ad.MediaUrl,
+                        DestinationUrl = ad.DestinationUrl,
+                        CallToAction = ad.CallToAction,
+                        Status = "DRAFT",
+                        FacebookPostId = ad.FacebookPostId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    newAdSet.Ads.Add(newAd);
+                }
+
+                newCampaign.AdSets.Add(newAdSet);
+            }
+
+            _dbContext.FacebookCampaigns.Add(newCampaign);
+            duplicatedCampaigns.Add(newCampaign);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (!campaign.MetaCampaignId.StartsWith("draft_camp_") && !campaign.MetaCampaignId.StartsWith("mock_camp_"))
+        {
+            foreach (var newCamp in duplicatedCampaigns)
+            {
+                try
+                {
+                    await SyncOrPublishCampaignAsync(newCamp.Id, "PAUSED", cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to auto-publish duplicated campaign {CampaignId} to Meta.", newCamp.Id);
+                }
+            }
+        }
+
+        return duplicatedCampaigns;
+    }
+
+    public async Task<List<FacebookAdSet>> DuplicateAdSetAsync(Guid adSetId, DuplicateAdSetRequest request, CancellationToken cancellationToken = default)
+    {
+        var adSet = await _dbContext.FacebookAdSets
+            .Include(s => s.Ads)
+            .FirstOrDefaultAsync(s => s.Id == adSetId, cancellationToken);
+
+        if (adSet == null)
+            throw new ArgumentException("Ad Set not found");
+
+        var duplicatedAdSets = new List<FacebookAdSet>();
+
+        for (int i = 1; i <= request.Count; i++)
+        {
+            var suffix = request.Count > 1 ? $" - Bản sao ({i})" : " - Bản sao";
+            var newAdSet = new FacebookAdSet
+            {
+                FacebookCampaignId = request.TargetCampaignId,
+                MetaAdSetId = "draft_adset_" + Guid.NewGuid().ToString("N").Substring(0, 12),
+                Name = adSet.Name + suffix,
+                BillingEvent = adSet.BillingEvent,
+                DailyBudget = adSet.DailyBudget,
+                LifetimeBudget = adSet.LifetimeBudget,
+                TargetingAgeMin = adSet.TargetingAgeMin,
+                TargetingAgeMax = adSet.TargetingAgeMax,
+                TargetingGenders = adSet.TargetingGenders,
+                TargetingLocations = adSet.TargetingLocations,
+                TargetingInterests = adSet.TargetingInterests,
+                Placements = adSet.Placements,
+                Status = "DRAFT",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            foreach (var ad in adSet.Ads)
+            {
+                var newAd = new FacebookAd
+                {
+                    MetaAdId = "draft_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12),
+                    Name = ad.Name + suffix,
+                    Title = ad.Title,
+                    BodyText = ad.BodyText,
+                    MediaUrl = ad.MediaUrl,
+                    DestinationUrl = ad.DestinationUrl,
+                    CallToAction = ad.CallToAction,
+                    Status = "DRAFT",
+                    FacebookPostId = ad.FacebookPostId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                newAdSet.Ads.Add(newAd);
+            }
+
+            _dbContext.FacebookAdSets.Add(newAdSet);
+            duplicatedAdSets.Add(newAdSet);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var targetCampaign = await _dbContext.FacebookCampaigns.FindAsync(new object[] { request.TargetCampaignId }, cancellationToken);
+        if (targetCampaign != null && !targetCampaign.MetaCampaignId.StartsWith("draft_camp_") && !targetCampaign.MetaCampaignId.StartsWith("mock_camp_"))
+        {
+            try
+            {
+                await SyncOrPublishCampaignAsync(targetCampaign.Id, targetCampaign.Status, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-publish duplicated adset to Meta for Campaign {CampaignId}.", targetCampaign.Id);
+            }
+        }
+
+        return duplicatedAdSets;
+    }
+
+    public async Task<List<FacebookAd>> DuplicateAdAsync(Guid adId, DuplicateAdRequest request, CancellationToken cancellationToken = default)
+    {
+        var ad = await _dbContext.FacebookAds
+            .FirstOrDefaultAsync(a => a.Id == adId, cancellationToken);
+
+        if (ad == null)
+            throw new ArgumentException("Ad not found");
+
+        var duplicatedAds = new List<FacebookAd>();
+
+        for (int i = 1; i <= request.Count; i++)
+        {
+            var suffix = request.Count > 1 ? $" - Bản sao ({i})" : " - Bản sao";
+            var newAd = new FacebookAd
+            {
+                FacebookAdSetId = request.TargetAdSetId,
+                MetaAdId = "draft_ad_" + Guid.NewGuid().ToString("N").Substring(0, 12),
+                Name = ad.Name + suffix,
+                Title = ad.Title,
+                BodyText = ad.BodyText,
+                MediaUrl = ad.MediaUrl,
+                DestinationUrl = ad.DestinationUrl,
+                CallToAction = ad.CallToAction,
+                Status = "DRAFT",
+                FacebookPostId = ad.FacebookPostId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _dbContext.FacebookAds.Add(newAd);
+            duplicatedAds.Add(newAd);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var targetAdSet = await _dbContext.FacebookAdSets
+            .Include(s => s.Campaign)
+            .FirstOrDefaultAsync(s => s.Id == request.TargetAdSetId, cancellationToken);
+
+        if (targetAdSet?.Campaign != null && !targetAdSet.Campaign.MetaCampaignId.StartsWith("draft_camp_") && !targetAdSet.Campaign.MetaCampaignId.StartsWith("mock_camp_"))
+        {
+            try
+            {
+                await SyncOrPublishCampaignAsync(targetAdSet.Campaign.Id, targetAdSet.Campaign.Status, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-publish duplicated ad to Meta for Campaign {CampaignId}.", targetAdSet.Campaign.Id);
+            }
+        }
+
+        return duplicatedAds;
     }
 }

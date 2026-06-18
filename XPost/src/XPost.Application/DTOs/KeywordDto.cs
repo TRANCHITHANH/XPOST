@@ -13,5 +13,6 @@ public class KeywordDto
     public DateTime? LastGeneratedAtUtc { get; set; }
     public string? Language { get; set; }
     public Guid? LastPostId { get; set; }
+    public string? ImageUrl { get; set; }
     public DateTime CreatedAt { get; set; }
 }

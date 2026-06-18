@@ -99,6 +99,14 @@ using (var scope = app.Services.CreateScope())
 
 app.UseMiddleware<XPost.WebAPI.Middlewares.GlobalExceptionMiddleware>();
 
+// Enable request body buffering globally so SignatureValidator can read raw body
+// for HMAC-SHA256 verification on Webhook endpoints (Zalo, Messenger, etc.)
+app.Use(async (context, next) =>
+{
+    context.Request.EnableBuffering();
+    await next();
+});
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -165,5 +173,6 @@ app.MapControllers().RequireRateLimiting("FixedPolicy");
 app.MapHub<XPost.WebAPI.Hubs.InstagramHub>("/hubs/instagram");
 app.MapHub<XPost.WebAPI.Hubs.ZaloHub>("/hubs/zalo");
 app.MapHub<XPost.WebAPI.Hubs.TikTokHub>("/hubs/tiktok");
+app.MapHub<XPost.WebAPI.Hubs.MessengerHub>("/hubs/messenger");
 
 app.Run();

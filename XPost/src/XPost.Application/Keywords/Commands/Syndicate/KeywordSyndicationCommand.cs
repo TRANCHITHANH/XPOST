@@ -67,6 +67,7 @@ public class KeywordSyndicationCommandHandler : IRequestHandler<KeywordSyndicati
                     Slug = StringHelper.GenerateSlug(keyword.Name) + "-" + DateTime.UtcNow.Ticks.ToString().Substring(10),
                     Content = keyword.GeneratedContent,
                     Description = keyword.Description ?? $"Bài đăng tự động từ từ khóa: {keyword.Name}",
+                    FeaturedImageUrl = keyword.ImageUrl,
                     Status = (int)PostStatus.Published,
                     CreatedAt = DateTime.UtcNow
                 };

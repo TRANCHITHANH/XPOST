@@ -54,6 +54,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<TikTokAd> TikTokAds { get; set; } = null!;
     public DbSet<TikTokAdInsight> TikTokAdInsights { get; set; } = null!;
 
+    // Chatbot AI
+    public DbSet<Chatbot> Chatbots { get; set; } = null!;
+    public DbSet<ChatbotSession> ChatbotSessions { get; set; } = null!;
+    public DbSet<ChatbotMessage> ChatbotMessages { get; set; } = null!;
+    public DbSet<Order> Orders { get; set; } = null!;
+    public DbSet<Complaint> Complaints { get; set; } = null!;
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -79,6 +86,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         builder.Entity<TikTokAdGroup>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
         builder.Entity<TikTokAd>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
         builder.Entity<TikTokAdInsight>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<Chatbot>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<ChatbotSession>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<ChatbotMessage>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<Order>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
+        builder.Entity<Complaint>().HasQueryFilter(e => !CurrentTenantId.HasValue || e.TenantId == CurrentTenantId);
 
 
         // ApplicationUser
@@ -499,6 +511,99 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany(a => a.Insights)
                 .HasForeignKey(e => e.TikTokAdId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Chatbot
+        builder.Entity<Chatbot>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.MessengerPageId).HasMaxLength(50);
+            entity.Property(e => e.MessengerPageToken).HasMaxLength(500);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            // Conditional index for fast multi-tenant webhook lookup by Page ID
+            entity.HasIndex(e => e.MessengerPageId)
+                .HasDatabaseName("IX_Chatbots_MessengerPageId")
+                .HasFilter("[MessengerPageId] IS NOT NULL");
+        });
+
+        // ChatbotSession
+        builder.Entity<ChatbotSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.Psid).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.CustomerAvatarUrl).HasMaxLength(1000);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne(e => e.Chatbot)
+                .WithMany(c => c.Sessions)
+                .HasForeignKey(e => e.ChatbotId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Composite index: fast lookup of active session by chatbot + PSID
+            entity.HasIndex(e => new { e.ChatbotId, e.Psid })
+                .HasDatabaseName("IX_ChatbotSessions_ChatbotId_Psid");
+        });
+
+        // ChatbotMessage
+        builder.Entity<ChatbotMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.Mid).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SenderId).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.RecipientId).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAtUtc").HasDefaultValueSql("sysutcdatetime()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAtUtc");
+
+            entity.HasOne(e => e.Session)
+                .WithMany(s => s.Messages)
+                .HasForeignKey(e => e.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique index on Mid for fast deduplication check
+            entity.HasIndex(e => e.Mid)
+                .HasDatabaseName("IX_ChatbotMessages_Mid")
+                .IsUnique();
+        });
+
+        // Order
+        builder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.PageId).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Psid).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.FullName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(200);
+            entity.Property(e => e.Address).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.SelectedItem).HasMaxLength(1000);
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Pending");
+            entity.Property(e => e.CreatedAtUtc).HasDefaultValueSql("sysutcdatetime()");
+        });
+
+        // Complaint
+        builder.Entity<Complaint>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("newid()");
+            entity.Property(e => e.PageId).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Psid).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.FullName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(200);
+            entity.Property(e => e.Content).HasMaxLength(4000).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Pending");
+            entity.Property(e => e.CreatedAtUtc).HasDefaultValueSql("sysutcdatetime()");
         });
     }
 

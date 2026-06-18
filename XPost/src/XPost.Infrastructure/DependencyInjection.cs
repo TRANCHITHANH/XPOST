@@ -21,6 +21,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpClient();
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
                 builder => builder.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
@@ -47,7 +48,7 @@ public static class DependencyInjection
         // Content detection
         services.AddSingleton<ISensitiveContentDetector, SensitiveContentDetector>();
 
-        // AI Service (ChatGPT)
+        // AI Service
         services.AddHttpClient<IAIService, OpenAIService>();
 
         // Social Publishers
@@ -73,6 +74,10 @@ public static class DependencyInjection
 
         services.AddScoped<IFacebookAdsService, FacebookAdsService>();
         services.AddScoped<ITikTokAdsService, TikTokAdsService>();
+
+        // Messenger Chatbot AI
+        services.AddSingleton<Services.SignatureValidator>();
+        services.AddHttpClient<IMessengerService, Services.MessengerService>();
 
         // Background Services
         services.AddHostedService<PostPublisherService>();

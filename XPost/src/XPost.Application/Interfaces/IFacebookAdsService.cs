@@ -19,8 +19,18 @@ public interface IFacebookAdsService
     Task<bool> ToggleCampaignStatusAsync(Guid campaignId, string status, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteCampaignAsync(Guid campaignId, CancellationToken cancellationToken = default);
+
+    Task<FacebookCampaign> UpdateCampaignAsync(Guid campaignId, UpdateCampaignDto dto, CancellationToken cancellationToken = default);
     
     Task<bool> DeleteAdSetAsync(Guid adSetId, CancellationToken cancellationToken = default);
+    
+    Task<bool> DeleteAdAsync(Guid adId, CancellationToken cancellationToken = default);
+    
+    Task<FacebookAdSet> UpdateAdSetAsync(Guid adSetId, UpdateAdSetDto dto, CancellationToken cancellationToken = default);
+    
+    Task<FacebookAd> UpdateAdAsync(Guid adId, UpdateFacebookAdDto dto, CancellationToken cancellationToken = default);
+    
+    Task<FacebookAd> MoveAdAsync(Guid adId, Guid newAdSetId, CancellationToken cancellationToken = default);
     
     Task<bool> CheckPaymentMethodAsync(Guid adAccountId, CancellationToken cancellationToken = default);
     
@@ -30,6 +40,9 @@ public interface IFacebookAdsService
     
     Task<List<FacebookAdInsightDto>> GetCampaignInsightsAsync(Guid campaignId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task<List<FacebookPagePostDto>> GetFacebookPagePostsAsync(string pageIdentifier, CancellationToken cancellationToken = default);
+    Task<List<FacebookCampaign>> DuplicateCampaignAsync(Guid campaignId, int count, CancellationToken cancellationToken = default);
+    Task<List<FacebookAdSet>> DuplicateAdSetAsync(Guid adSetId, DuplicateAdSetRequest request, CancellationToken cancellationToken = default);
+    Task<List<FacebookAd>> DuplicateAdAsync(Guid adId, DuplicateAdRequest request, CancellationToken cancellationToken = default);
 }
 
 public class FacebookAdAccountDto
@@ -98,4 +111,48 @@ public class FacebookPagePostDto
     public string CreatedTime { get; set; } = string.Empty;
     public string FullPicture { get; set; } = string.Empty;
     public string PermalinkUrl { get; set; } = string.Empty;
+}
+
+public class UpdateAdSetDto
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal DailyBudget { get; set; }
+    public int TargetingAgeMin { get; set; }
+    public int TargetingAgeMax { get; set; }
+    public string TargetingLocations { get; set; } = string.Empty;
+    public string? Status { get; set; }
+}
+
+public class UpdateCampaignDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Objective { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public decimal Budget { get; set; }
+    public DateTime? StartTimeUtc { get; set; }
+    public DateTime? EndTimeUtc { get; set; }
+}
+
+public class UpdateFacebookAdDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string BodyText { get; set; } = string.Empty;
+    public string MediaUrl { get; set; } = string.Empty;
+    public string DestinationUrl { get; set; } = string.Empty;
+    public string CallToAction { get; set; } = string.Empty;
+    public string? FacebookPostId { get; set; }
+    public string? Status { get; set; }
+}
+
+public class DuplicateAdSetRequest
+{
+    public Guid TargetCampaignId { get; set; }
+    public int Count { get; set; } = 1;
+}
+
+public class DuplicateAdRequest
+{
+    public Guid TargetAdSetId { get; set; }
+    public int Count { get; set; } = 1;
 }

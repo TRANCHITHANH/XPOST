@@ -11,12 +11,14 @@ public class OpenAIService : IAIService
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _model;
+    private readonly string _baseUrl;
 
     public OpenAIService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _apiKey = configuration["OpenAI:ApiKey"] ?? string.Empty;
         _model = configuration["OpenAI:Model"] ?? "gpt-3.5-turbo";
+        _baseUrl = configuration["OpenAI:BaseUrl"] ?? "https://api.openai.com/v1/chat/completions";
 
         if (!string.IsNullOrEmpty(_apiKey))
         {
@@ -44,7 +46,7 @@ public class OpenAIService : IAIService
             temperature = 0.7
         };
 
-        var response = await _httpClient.PostAsJsonAsync("https://api.openai.com/v1/chat/completions", requestBody, ct);
+        var response = await _httpClient.PostAsJsonAsync(_baseUrl, requestBody, ct);
 
         if (!response.IsSuccessStatusCode)
         {

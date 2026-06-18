@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../lib/axios';
 import toast from 'react-hot-toast';
-import { 
-  ChevronRight, ChevronLeft, Settings, Users, Image as ImageIcon, 
+import {
+  ChevronRight, ChevronLeft, Settings, Users, Image as ImageIcon,
   Smartphone, ArrowRight, Video, Heart, MessageCircle, Share2, Music
 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export default function CreateTikTokAdCampaignWizard() {
   const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Data lists
   const [adAccounts, setAdAccounts] = useState<AdAccount[]>([]);
 
@@ -32,7 +32,7 @@ export default function CreateTikTokAdCampaignWizard() {
     budgetMode: 'BUDGET_MODE_DAY',
     startTimeUtc: new Date().toISOString().substring(0, 16),
     endTimeUtc: '',
-    
+
     // Ad Group
     adGroupName: '',
     targetingAgeMin: 18,
@@ -41,7 +41,7 @@ export default function CreateTikTokAdCampaignWizard() {
     targetingLocations: 'VN',
     targetingInterests: [] as string[],
     placementType: 'PLACEMENT_MODE_DEFAULT',
-    
+
     // Ad Creative
     adName: '',
     title: '',
@@ -66,7 +66,7 @@ export default function CreateTikTokAdCampaignWizard() {
     try {
       const accRes = await api.get('/tiktokads/accounts');
       setAdAccounts(accRes.data);
-      
+
       const queryAccId = searchParams.get('accountId');
       if (queryAccId) {
         setFormData(prev => ({ ...prev, adAccountId: queryAccId }));
@@ -83,13 +83,13 @@ export default function CreateTikTokAdCampaignWizard() {
     const { name, value } = e.target;
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
-      
+
       // Auto-name ad groups and ads when campaign name changes
       if (name === 'name') {
         updated.adGroupName = `${value} - AdGroup`;
         updated.adName = `${value} - Creative`;
       }
-      
+
       return updated;
     });
   };
@@ -202,14 +202,14 @@ export default function CreateTikTokAdCampaignWizard() {
     try {
       setIsSubmitting(true);
       toast.loading('Khởi tạo chiến dịch trên TikTok Business Marketing API...', { id: 'submit' });
-      
+
       const payload = {
         ...formData,
         targetingInterests: formData.targetingInterests,
         startTimeUtc: new Date(formData.startTimeUtc).toISOString(),
         endTimeUtc: formData.endTimeUtc ? new Date(formData.endTimeUtc).toISOString() : null
       };
-      
+
       await api.post(`/tiktokads/campaigns?adAccountId=${formData.adAccountId}`, payload);
       toast.success('Khởi tạo chiến dịch thành công trên TikTok Business Sandbox!', { id: 'submit', duration: 5000 });
       navigate('/tiktok-ads');
@@ -253,7 +253,7 @@ export default function CreateTikTokAdCampaignWizard() {
                 <Settings className="w-5 h-5 text-[#00f2fe]" />
                 Thiết lập Chiến dịch chính (TikTok Campaign)
               </h3>
-              
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tài khoản quảng cáo TikTok</label>
                 <select
@@ -283,7 +283,7 @@ export default function CreateTikTokAdCampaignWizard() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Mục tiêu chiến dịch (Objective)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Mục tiêu chiến dịch</label>
                   <select
                     name="objectiveType"
                     value={formData.objectiveType}
@@ -448,7 +448,7 @@ export default function CreateTikTokAdCampaignWizard() {
                   onKeyDown={handleAddInterest}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:border-[#00f2fe] outline-none text-slate-100"
                 />
-                
+
                 {formData.targetingInterests.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {formData.targetingInterests.map((interest, i) => (
@@ -486,27 +486,25 @@ export default function CreateTikTokAdCampaignWizard() {
               {/* Upload Creative Mode */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tài nguyên hình ảnh / video</label>
-                
+
                 <div className="flex gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl w-fit">
                   <button
                     type="button"
                     onClick={() => setMediaMode('upload')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      mediaMode === 'upload'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mediaMode === 'upload'
                         ? 'bg-slate-900 text-[#00f2fe] border border-slate-800 shadow-lg'
                         : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     📁 Tải lên từ máy
                   </button>
                   <button
                     type="button"
                     onClick={() => setMediaMode('url')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      mediaMode === 'url'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mediaMode === 'url'
                         ? 'bg-slate-900 text-[#00f2fe] border border-slate-800 shadow-lg'
                         : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
                     🔗 Dán URL liên kết
                   </button>
@@ -518,11 +516,10 @@ export default function CreateTikTokAdCampaignWizard() {
                     onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                     onDragLeave={() => setIsDragOver(false)}
                     onDrop={handleDrop}
-                    className={`relative cursor-pointer border-2 border-dashed rounded-2xl transition-all duration-200 flex flex-col items-center justify-center gap-2 py-6 px-4 text-center select-none ${
-                      isDragOver
+                    className={`relative cursor-pointer border-2 border-dashed rounded-2xl transition-all duration-200 flex flex-col items-center justify-center gap-2 py-6 px-4 text-center select-none ${isDragOver
                         ? 'border-[#00f2fe] bg-[#00f2fe]/5 scale-[1.01]'
                         : 'border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900/50'
-                    }`}
+                      }`}
                   >
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl">
                       {isDragOver ? '🎯' : '🎬'}
@@ -706,7 +703,7 @@ export default function CreateTikTokAdCampaignWizard() {
 
           {/* Portrait Screen Area */}
           <div className="w-full h-full bg-[#121212] rounded-[38px] overflow-hidden flex flex-col font-sans text-xs select-none relative">
-            
+
             {/* Top Navigation */}
             <div className="absolute top-6 left-0 right-0 p-3 flex justify-center items-center gap-4 text-white/60 font-bold text-[11px] z-30">
               <span className="hover:text-white cursor-pointer">Bạn bè</span>

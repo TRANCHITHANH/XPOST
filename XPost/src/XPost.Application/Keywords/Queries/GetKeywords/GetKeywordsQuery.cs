@@ -34,6 +34,7 @@ public class GetKeywordsQueryHandler : IRequestHandler<GetKeywordsQuery, List<Ke
             LastGeneratedAtUtc = k.LastGeneratedAtUtc,
             Language = k.Language,
             LastPostId = k.LastPostId,
+            ImageUrl = k.ImageUrl,
             CreatedAt = k.CreatedAt
         })
         .OrderByDescending(k => k.CreatedAt)

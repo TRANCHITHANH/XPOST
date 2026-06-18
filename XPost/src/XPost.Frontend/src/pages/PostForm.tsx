@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../lib/axios';
 import toast from 'react-hot-toast';
 import { Loader2, ChevronDown, ArrowLeft, Save, Eye, FileText, Globe, Settings, Share2 } from 'lucide-react';
@@ -113,7 +113,43 @@ export default function PostForm() {
     const navigate = useNavigate();
     const isEdit = !!id;
 
-    const [form, setForm] = useState<PostFormData>(emptyForm);
+    const location = useLocation();
+    const initialState = location.state as Partial<PostFormData> | null;
+
+    // Auto-generate slug from title (Vietnamese-aware)
+    const removeVietnamese = (str: string) => {
+        str = str.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
+        str = str.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
+        str = str.replace(/[ìíịỉĩ]/g, 'i');
+        str = str.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
+        str = str.replace(/[ùúụủũưừứựửữ]/g, 'u');
+        str = str.replace(/[ỳýỵỷỹ]/g, 'y');
+        str = str.replace(/đ/g, 'd');
+        return str;
+    };
+
+    const generateSlug = (title: string) => {
+        return removeVietnamese(title.toLowerCase())
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim();
+    };
+
+    const [form, setForm] = useState<PostFormData>(() => {
+        if (!isEdit && initialState) {
+            return {
+                ...emptyForm,
+                title: initialState.title || '',
+                slug: initialState.title ? generateSlug(initialState.title) : '',
+                content: initialState.content || '',
+                featuredImageUrl: initialState.featuredImageUrl || '',
+                tags: initialState.tags || '',
+                metaKeywords: initialState.tags || ''
+            };
+        }
+        return emptyForm;
+    });
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
@@ -167,26 +203,6 @@ export default function PostForm() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
-    };
-
-    // Auto-generate slug from title (Vietnamese-aware)
-    const removeVietnamese = (str: string) => {
-        str = str.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
-        str = str.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
-        str = str.replace(/[ìíịỉĩ]/g, 'i');
-        str = str.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
-        str = str.replace(/[ùúụủũưừứựửữ]/g, 'u');
-        str = str.replace(/[ỳýỵỷỹ]/g, 'y');
-        str = str.replace(/đ/g, 'd');
-        return str;
-    };
-
-    const generateSlug = (title: string) => {
-        return removeVietnamese(title.toLowerCase())
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim();
     };
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

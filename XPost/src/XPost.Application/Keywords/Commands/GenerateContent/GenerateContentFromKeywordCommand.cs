@@ -46,7 +46,7 @@ public class GenerateContentFromKeywordCommandHandler : IRequestHandler<Generate
                 promptTemplate = "Hãy đóng vai một chuyên gia Content Strategy của Công ty TNHH Mạng Xuyên Việt. " +
                                  "Hãy viết một bài viết chuyên sâu và lôi cuốn về chủ đề: {keyword}.\n\n" +
                                  "YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG (BẮT BUỘC):\n" +
-                                 "- TUYỆT ĐỐI KHÔNG sử dụng các biểu tượng (Icons), Emojis hay các ký tự đặc biệt trang trí (ví dụ: 🌐, 🚀, 💡, 🔗, #, v.v.).\n" +
+                                 "- TUYỆT ĐỐI KHÔNG sử dụng các biểu tượng (Icons), Emojis hay các ký tự đặc biệt trang trí (ví dụ: 🌐, 🚀, 💡, 🔗, v.v.). NGOẠI TRỪ dấu # được phép dùng cho hashtag ở cuối bài.\n" +
                                  "- KHÔNG được ghi các nhãn thành phần như 'Mở bài', 'Thân bài', 'Đoạn 1', 'Đoạn 2', 'Kết luận' vào trong văn bản. Hãy để nội dung tự dẫn dắt mạch lạc.\n" +
                                  "- KHÔNG sử dụng các dấu hoa thị (*) hoặc gạch ngang (-) ở đầu đoạn văn nếu không yêu cầu liệt kê.\n" +
                                  "- Văn bản phải trông như một bài báo chuyên nghiệp, trang trọng.\n\n" +
@@ -58,6 +58,7 @@ public class GenerateContentFromKeywordCommandHandler : IRequestHandler<Generate
                                  "  2. Khẳng định năng lực của Mạng Xuyên Việt (Đội ngũ IT trình độ cao, giải pháp tối ưu, công nghệ hiện đại).\n" +
                                  "  3. Những cam kết về chất lượng và hỗ trợ hậu mãi mà khách hàng nhận được.\n" +
                                  "- Kết bài: Đúc kết giá trị và đưa ra lời kêu gọi hành động (Call to Action) mạnh mẽ.\n" +
+                                 "- Hashtags (BẮT BUỘC): Dưới cùng của bài viết, in thêm đúng 3 hashtag liên quan sâu sắc. 1 hashtag là của công ty (ví dụ: #MangXuyenViet), 2 hashtag còn lại liên quan trực tiếp đến nội dung bài viết.\n" +
                                  "- Ngôn ngữ: Tiếng Việt, hành văn chuyên nghiệp, hiện đại, thể hiện vị thế công ty công nghệ uy tín.";
             }
             else
@@ -66,10 +67,11 @@ public class GenerateContentFromKeywordCommandHandler : IRequestHandler<Generate
                                  "Viết một đoạn giới thiệu ngắn (tối đa 160 ký tự) cho từ khóa: {keyword} của Công ty TNHH Mạng Xuyên Việt.\n\n" +
                                  "YÊU CẦU ĐỊNH DẠNG:\n" +
                                  "- KHÔNG sử dụng Icons, Emojis.\n" +
-                                 "- KHÔNG sử dụng các ký tự trang trí.\n\n" +
+                                 "- KHÔNG sử dụng các ký tự trang trí (Ngoại trừ dấu # cho hashtag ở cuối).\n\n" +
                                  "YÊU CẦU NỘI DUNG:\n" +
                                  "- Giọng văn: Chuyên nghiệp, tin cậy, cảm hứng.\n" +
                                  "- Cấu trúc: Nêu bật giá trị cốt lõi và kết thúc bằng CTA ngắn gọn.\n" +
+                                 "- Hashtags: Thêm đúng 3 hashtag ở cuối (1 hashtag #MangXuyenViet, 2 hashtag liên quan nội dung).\n" +
                                  "- Từ ngữ: 'Giải pháp tối ưu', 'Đột phá', 'Chuyên nghiệp', 'Hàng đầu'.\n" +
                                  "- Ngôn ngữ: Tiếng Việt.";
             }

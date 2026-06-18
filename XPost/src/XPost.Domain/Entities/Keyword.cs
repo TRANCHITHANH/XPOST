@@ -15,6 +15,8 @@ public class Keyword : BaseEntity, IMultiTenant
     public DateTime? LastGeneratedAtUtc { get; set; }
     public string? Language { get; set; } = "vi";
 
+    public string? ImageUrl { get; set; }
+
     // Related data if needed
     public Guid? LastPostId { get; set; }
     public Post? LastPost { get; set; }

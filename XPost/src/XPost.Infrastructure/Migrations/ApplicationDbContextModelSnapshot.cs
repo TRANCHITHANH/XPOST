@@ -326,6 +326,186 @@ namespace XPost.Infrastructure.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("XPost.Domain.Entities.Chatbot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<string>("ClaudeConfigJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<string>("IceBreakersJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("KnowledgeBase")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MaintenanceUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("MaxTokens")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MessengerPageId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("MessengerPageToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PriceListUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.Property<int>("UsedTokens")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessengerPageId")
+                        .HasDatabaseName("IX_Chatbots_MessengerPageId")
+                        .HasFilter("[MessengerPageId] IS NOT NULL");
+
+                    b.ToTable("Chatbots");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.ChatbotMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<bool>("IsFromUser")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Mid")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RecipientId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("SentAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Mid")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ChatbotMessages_Mid");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("ChatbotMessages");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.ChatbotSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<Guid>("ChatbotId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<string>("CustomerAvatarUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("LastInteractionAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Psid")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatbotId", "Psid")
+                        .HasDatabaseName("IX_ChatbotSessions_ChatbotId_Psid");
+
+                    b.ToTable("ChatbotSessions");
+                });
+
             modelBuilder.Entity("XPost.Domain.Entities.FacebookAd", b =>
                 {
                     b.Property<Guid>("Id")
@@ -664,6 +844,9 @@ namespace XPost.Infrastructure.Migrations
                     b.Property<string>("GeneratedContent")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Language")
                         .HasColumnType("nvarchar(max)");
 
@@ -695,6 +878,79 @@ namespace XPost.Infrastructure.Migrations
                     b.HasIndex("LastPostId");
 
                     b.ToTable("Keywords");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("newid()");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAtUtc");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("sysutcdatetime()");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("PageId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Psid")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SelectedItem")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAtUtc");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Orders", t =>
+                        {
+                            t.Property("CreatedAtUtc")
+                                .HasColumnName("CreatedAtUtc1");
+                        });
                 });
 
             modelBuilder.Entity("XPost.Domain.Entities.Post", b =>
@@ -1878,6 +2134,28 @@ namespace XPost.Infrastructure.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("XPost.Domain.Entities.ChatbotMessage", b =>
+                {
+                    b.HasOne("XPost.Domain.Entities.ChatbotSession", "Session")
+                        .WithMany("Messages")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.ChatbotSession", b =>
+                {
+                    b.HasOne("XPost.Domain.Entities.Chatbot", "Chatbot")
+                        .WithMany("Sessions")
+                        .HasForeignKey("ChatbotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chatbot");
+                });
+
             modelBuilder.Entity("XPost.Domain.Entities.FacebookAd", b =>
                 {
                     b.HasOne("XPost.Domain.Entities.FacebookAdSet", "AdSet")
@@ -2139,6 +2417,16 @@ namespace XPost.Infrastructure.Migrations
                     b.Navigation("Children");
 
                     b.Navigation("Posts");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.Chatbot", b =>
+                {
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("XPost.Domain.Entities.ChatbotSession", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("XPost.Domain.Entities.FacebookAd", b =>

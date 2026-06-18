@@ -506,6 +506,138 @@ public class TikTokPageManagementController : ControllerBase
         return Ok(responseBody);
     }
 
+    /// <summary>
+    /// DELETE /api/tiktok-pages/{accountId}/conversations/{convId}
+    /// Deletes a TikTok conversation and its messages from local DB.
+    /// </summary>
+    [HttpDelete("{accountId}/conversations/{convId}")]
+    public async Task<IActionResult> DeleteConversation(Guid accountId, Guid convId)
+    {
+        try
+        {
+            var account = await GetValidTikTokAccount(accountId);
+            if (account == null) return NotFound(new { error = "Account not found or not a TikTok account." });
+
+            var conv = await _dbContext.TikTokConversations.FirstOrDefaultAsync(c => c.Id == convId && c.SocialAccountId == accountId);
+            if (conv == null) return NotFound(new { error = "Conversation not found." });
+
+            // Delete messages in conversation
+            var messages = _dbContext.TikTokMessages.Where(m => m.ConversationId == convId);
+            _dbContext.TikTokMessages.RemoveRange(messages);
+
+            // Delete conversation
+            _dbContext.TikTokConversations.Remove(conv);
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Conversation deleted successfully." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting TikTok conversation {ConvId}", convId);
+            return StatusCode(500, new { error = "Internal server error in DeleteConversation", details = ex.Message });
+        }
+    }
+
+    [HttpGet("{accountId}/conversations/{psid}/orders")]
+    public async Task<IActionResult> GetConversationOrders(Guid accountId, string psid, CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidTikTokAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var pageId = account.AccountIdentifier;
+            if (string.IsNullOrEmpty(pageId)) return BadRequest("PageIdentifier is missing");
+
+            var orders = await _dbContext.Orders
+                .IgnoreQueryFilters()
+                .Where(o => (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId) 
+                            && o.PageId == pageId 
+                            && o.Psid == psid)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new
+                {
+                    o.Id,
+                    sentAtUtc = o.CreatedAtUtc,
+                    fullName = o.FullName,
+                    phoneNumber = o.PhoneNumber,
+                    address = o.Address,
+                    selectedItem = o.SelectedItem
+                })
+                .ToListAsync(ct);
+
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting TikTok conversation orders for {Psid}", psid);
+            return StatusCode(500, new { error = "Internal server error in GetConversationOrders", details = ex.Message });
+        }
+    }
+
+    [HttpGet("{accountId}/orders")]
+    public async Task<IActionResult> GetPageOrders(Guid accountId, CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidTikTokAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var pageId = account.AccountIdentifier;
+            if (string.IsNullOrEmpty(pageId)) return BadRequest("PageIdentifier is missing");
+
+            var orders = await _dbContext.Orders
+                .IgnoreQueryFilters()
+                .Where(o => (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId) 
+                            && o.PageId == pageId)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new
+                {
+                    o.Id,
+                    sentAtUtc = o.CreatedAtUtc,
+                    fullName = o.FullName,
+                    phoneNumber = o.PhoneNumber,
+                    address = o.Address,
+                    selectedItem = o.SelectedItem
+                })
+                .ToListAsync(ct);
+
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting TikTok page orders");
+            return StatusCode(500, new { error = "Internal server error in GetPageOrders", details = ex.Message });
+        }
+    }
+
+    [HttpDelete("{accountId}/orders/{orderId}")]
+    public async Task<IActionResult> DeleteOrder(Guid accountId, Guid orderId, CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidTikTokAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var order = await _dbContext.Orders
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == orderId && (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId), ct);
+
+            if (order == null) return NotFound("Order not found");
+
+            _dbContext.Orders.Remove(order);
+            await _dbContext.SaveChangesAsync(ct);
+
+            return Ok(new { message = "Order deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting TikTok order {OrderId}", orderId);
+            return StatusCode(500, new { error = "Internal server error in DeleteOrder", details = ex.Message });
+        }
+    }
+
     // ═══════════════════════════════════════════════════════
     // REQUEST DTOs
     // ═══════════════════════════════════════════════════════

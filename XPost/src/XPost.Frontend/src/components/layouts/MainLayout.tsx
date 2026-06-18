@@ -47,7 +47,7 @@ const Icons = {
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
     ),
     Megaphone: () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 13v-2Z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
     )
 };
 
@@ -58,10 +58,10 @@ const getPlatformConfig = (value: number) => {
         case 7: return { color: 'text-indigo-600', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.027-.78-.07-1.109zm-7.981.105c.647-.034 1.233-.1 1.233-.1.58-.068.512-.921-.068-.889 0 0-1.744.137-2.866.137-1.055 0-2.865-.137-2.865-.137-.58-.032-.648.856-.068.889 0 0 .552.066 1.133.1l1.682 4.615-2.364 7.088L6.841 6.93c.649-.034 1.233-.1 1.233-.1.581-.068.513-.921-.067-.889 0 0-1.745.137-2.866.137-.201 0-.44-.005-.697-.015C6.273 3.56 8.96 1.907 12 1.907c2.266 0 4.33.867 5.88 2.285-.038-.002-.075-.006-.114-.006-.888 0-1.517.774-1.517 1.604 0 .744.43 1.374.888 2.118.344.587.744 1.341.744 2.43 0 .753-.29 1.626-.674 2.843l-.882 2.95-3.19-9.489.003-.012zM12 22.094c-1.41 0-2.746-.29-3.959-.814l4.208-12.225 4.31 11.81c.028.07.056.092.084.162A10.043 10.043 0 0 1 12 22.094zM1.213 12c0-2.084.607-4.03 1.656-5.666L8.131 20.73C4.128 18.96 1.213 15.79 1.213 12zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z" /></svg> };
         case 8: return { color: 'text-cyan-600', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" /></svg> };
         case 11: return { color: 'text-gray-900', icon: <svg viewBox="0 0 448 512" className="w-4 h-4" fill="currentColor"><path d="M120.12 208.29c-3.88-2.9-7.77-4.35-11.65-4.35H91.03v104.47h17.45c3.88 0 7.77-1.45 11.65-4.35 3.88-2.9 5.82-7.25 5.82-13.06v-69.65c-.01-5.8-1.96-10.16-5.83-13.06zM448 80v352c0 26.51-21.49 48-48 48H48c-26.51 0-48-21.49-48-48V80c0-26.51 21.49-48 48-48h352c0 26.51 21.49 48 48 48zm-227.27 102.44c0-3.9-3.17-7.07-7.07-7.07H173.8c-3.9 0-7.07 3.17-7.07 7.07v147.11c0 3.9 3.17 7.07 7.07 7.07h40.41c3.9 0 7.07-3.17 7.07-7.07v-147.11zM158.37 128H48c-8.84 0-16 7.16-16 16v224c0 8.84 7.16 16 16 16h110.37c8.84 0 16-7.16 16-16V144c0-8.84-7.16-16-16-16zm241.63 48.44c0-3.9-3.17-7.07-7.07-7.07h-40.41c-3.9 0-7.07 3.17-7.07 7.07v147.11c0 3.9 3.17 7.07 7.07 7.07h40.41c3.9 0 7.07-3.17 7.07-7.07v-147.11z" /></svg> };
-        case 12: return { color: 'text-orange-500', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M16 3H8C5.239 3 3 5.239 3 8v8c0 2.761 2.239 5 5 5h8c2.761 0 5-2.239 5-5V8c0-2.761-2.239-5-5-5zm-2.5 13H10c-1.657 0-3-1.343-3-3s1.343-3 3-3V8h6v2h-6v2h3.5c1.657 0 3 1.343 3 3s-1.343 3-3 3z"/></svg> };
-        case 2: return { color: 'text-black', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M14.258 10.152L23.176 0h-2.113l-7.747 8.813L7.133 0H0l9.352 13.328L0 24h2.113l8.176-9.309L16.867 24h7.133zm-2.895 3.293l-.949-1.328L2.875 1.56H5.93l6.082 8.508.949 1.328 7.854 10.985h-3.055z"/></svg> };
-        case 6: return { color: 'text-black', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 0C5.372 0 0 5.372 0 12c0 6.627 5.372 12 12 12s12-5.373 12-12c0-6.628-5.372-12-12-12zm-1.026 15.656h-2.61V8.344h2.61v7.312zm-1.306-8.31a1.514 1.514 0 1 1 0-3.028 1.514 1.514 0 0 1 0 3.028zm7.391 8.31h-2.61v-3.79c0-.904-.016-2.067-1.259-2.067-1.261 0-1.453.985-1.453 2.001v3.856h-2.61V8.344h2.505v.998h.036c.349-.66 1.199-1.355 2.467-1.355 2.639 0 3.125 1.737 3.125 3.996v3.673z"/></svg> };
-        case 5: return { color: 'text-black', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M15.426 6.848h-6.848c-1.308 0-2.368 1.06-2.368 2.368v5.568c0 1.308 1.06 2.368 2.368 2.368h6.848c1.308 0 2.368-1.06 2.368-2.368V9.216c0-1.308-1.06-2.368-2.368-2.368zM12 15.664c-1.611 0-2.916-1.305-2.916-2.916 0-1.611 1.305-2.916 2.916-2.916 1.611 0 2.916 1.305 2.916 2.916 0 1.611-1.305 2.916-2.916 2.916z"/></svg> };
+        case 12: return { color: 'text-orange-500', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M16 3H8C5.239 3 3 5.239 3 8v8c0 2.761 2.239 5 5 5h8c2.761 0 5-2.239 5-5V8c0-2.761-2.239-5-5-5zm-2.5 13H10c-1.657 0-3-1.343-3-3s1.343-3 3-3V8h6v2h-6v2h3.5c1.657 0 3 1.343 3 3s-1.343 3-3 3z" /></svg> };
+        case 2: return { color: 'text-black', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M14.258 10.152L23.176 0h-2.113l-7.747 8.813L7.133 0H0l9.352 13.328L0 24h2.113l8.176-9.309L16.867 24h7.133zm-2.895 3.293l-.949-1.328L2.875 1.56H5.93l6.082 8.508.949 1.328 7.854 10.985h-3.055z" /></svg> };
+        case 6: return { color: 'text-black', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 0C5.372 0 0 5.372 0 12c0 6.627 5.372 12 12 12s12-5.373 12-12c0-6.628-5.372-12-12-12zm-1.026 15.656h-2.61V8.344h2.61v7.312zm-1.306-8.31a1.514 1.514 0 1 1 0-3.028 1.514 1.514 0 0 1 0 3.028zm7.391 8.31h-2.61v-3.79c0-.904-.016-2.067-1.259-2.067-1.261 0-1.453.985-1.453 2.001v3.856h-2.61V8.344h2.505v.998h.036c.349-.66 1.199-1.355 2.467-1.355 2.639 0 3.125 1.737 3.125 3.996v3.673z" /></svg> };
+        case 5: return { color: 'text-black', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M15.426 6.848h-6.848c-1.308 0-2.368 1.06-2.368 2.368v5.568c0 1.308 1.06 2.368 2.368 2.368h6.848c1.308 0 2.368-1.06 2.368-2.368V9.216c0-1.308-1.06-2.368-2.368-2.368zM12 15.664c-1.611 0-2.916-1.305-2.916-2.916 0-1.611 1.305-2.916 2.916-2.916 1.611 0 2.916 1.305 2.916 2.916 0 1.611-1.305 2.916-2.916 2.916z" /></svg> };
         default: return { color: 'text-gray-500', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle></svg> };
     }
 };
@@ -72,9 +72,9 @@ const menuItems = [
     { name: 'Posts', path: '/posts', icon: Icons.Posts },
     { name: 'Categories', path: '/categories', icon: Icons.Menu },
     { name: 'Calendar', path: '/calendar', icon: Icons.Calendar },
-    { 
-        name: 'Platforms', 
-        path: '/platforms', 
+    {
+        name: 'Platforms',
+        path: '/platforms',
         icon: Icons.Platforms,
         isDynamicSubItems: true
     },
@@ -84,14 +84,14 @@ const menuItems = [
         icon: Icons.Megaphone,
         isStaticSubItems: true,
         subItems: [
-            { 
-                name: 'Facebook Ads', 
+            {
+                name: 'Facebook Ads',
                 path: '/facebook-ads',
                 color: 'text-blue-600',
                 icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12S0 5.446 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
             },
-            { 
-                name: 'TikTok Ads', 
+            {
+                name: 'TikTok Ads',
                 path: '/tiktok-ads',
                 color: 'text-black',
                 icon: <svg viewBox="0 0 448 512" className="w-4 h-4" fill="currentColor"><path d="M448 209.91a210.06 210.06 0 0 1-122.77-39.25v178.66A172.93 172.93 0 1 1 152.3 176.5a171.18 171.18 0 0 1 73-16.14h38.66v72.82c-7.77-1.39-15.82-2.11-24-2.11a100.08 100.08 0 1 0 100.07 100.07V0h73.74a209.18 209.18 0 0 0 34.33 97.63c22.61 24.32 53.64 38.64 88.08 41.5v70.78z" /></svg>
@@ -127,7 +127,7 @@ export default function MainLayout() {
             }
         };
         fetchAccounts();
-        
+
         // Listen to custom event when account is added/removed
         const onAccountsChange = () => fetchAccounts();
         window.addEventListener('social_accounts_updated', onAccountsChange);
@@ -144,11 +144,11 @@ export default function MainLayout() {
             return null;
         }
     };
-    
+
     const payload = getPayload();
     const role = payload ? (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload.role || '') : '';
     const email = payload ? (payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || payload.email || 'User') : 'User';
-    
+
     const filteredMenuItems = menuItems.filter(item => {
         if (item.name === 'System Tenants' && role !== 'SuperAdmin') return false;
         return true;
@@ -284,15 +284,15 @@ export default function MainLayout() {
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 if (isSidebarCollapsed) setIsSidebarCollapsed(false);
-                                                setExpandedMenus(prev => 
+                                                setExpandedMenus(prev =>
                                                     prev.includes(item.name) ? prev.filter(m => m !== item.name) : [...prev, item.name]
                                                 );
                                             }}
                                             className={`
                                               flex items-center justify-between p-2.5 rounded-lg transition-all duration-200 group cursor-pointer
                                               ${location.pathname.startsWith(item.path)
-                                                ? 'bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-gray-100/80 text-gray-900 font-medium'
-                                                : 'text-gray-500 hover:bg-black/5 hover:text-gray-900'}
+                                                    ? 'bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-gray-100/80 text-gray-900 font-medium'
+                                                    : 'text-gray-500 hover:bg-black/5 hover:text-gray-900'}
                                             `}
                                         >
                                             <div className="flex items-center gap-3">
@@ -317,7 +317,7 @@ export default function MainLayout() {
                                         {expandedMenus.includes(item.name) && !isSidebarCollapsed && (
                                             <div className="flex flex-col gap-1 pl-9 mt-1 mb-2">
                                                 {/* Manage connection item */}
-                                                <NavLink 
+                                                <NavLink
                                                     to={item.path}
                                                     className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
                                                         ${isActive && location.pathname === item.path ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-blue-600 hover:bg-black/5'}`}
@@ -327,15 +327,15 @@ export default function MainLayout() {
                                                     <Settings className="w-4 h-4 text-gray-400" />
                                                     Quản lý kết nối
                                                 </NavLink>
-                                                
+
                                                 {/* Accounts items */}
                                                 {connectedAccounts.map((account: any) => {
                                                     const subPath = `${item.path}/${account.id}/manage`;
                                                     const config = getPlatformConfig(account.platform);
                                                     const isSubActive = location.pathname === subPath;
                                                     return (
-                                                        <NavLink 
-                                                            key={account.id} 
+                                                        <NavLink
+                                                            key={account.id}
                                                             to={subPath}
                                                             className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
                                                                 ${isActive ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-blue-600 hover:bg-black/5'}`}
@@ -355,15 +355,15 @@ export default function MainLayout() {
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 if (isSidebarCollapsed) setIsSidebarCollapsed(false);
-                                                setExpandedMenus(prev => 
+                                                setExpandedMenus(prev =>
                                                     prev.includes(item.name) ? prev.filter(m => m !== item.name) : [...prev, item.name]
                                                 );
                                             }}
                                             className={`
                                               flex items-center justify-between p-2.5 rounded-lg transition-all duration-200 group cursor-pointer
                                               ${location.pathname.startsWith(item.path) || (item.subItems as any[]).some(sub => location.pathname.startsWith(sub.path))
-                                                ? 'bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-gray-100/80 text-gray-900 font-medium'
-                                                : 'text-gray-500 hover:bg-black/5 hover:text-gray-900'}
+                                                    ? 'bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-1 ring-gray-100/80 text-gray-900 font-medium'
+                                                    : 'text-gray-500 hover:bg-black/5 hover:text-gray-900'}
                                             `}
                                         >
                                             <div className="flex items-center gap-3">
@@ -388,17 +388,17 @@ export default function MainLayout() {
                                         {expandedMenus.includes(item.name) && !isSidebarCollapsed && (
                                             <div className="flex flex-col gap-1 pl-9 mt-1 mb-2">
                                                 {(item.subItems as any[]).map((sub) => (
-                                                     <NavLink 
-                                                         key={sub.name} 
-                                                         to={sub.path}
-                                                         className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
+                                                    <NavLink
+                                                        key={sub.name}
+                                                        to={sub.path}
+                                                        className={({ isActive }) => `text-sm py-2 px-3 rounded-lg transition-colors flex items-center gap-2
                                                              ${isActive ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-blue-600 hover:bg-black/5'}`}
-                                                     >
-                                                         {location.pathname === sub.path && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />}
-                                                         <div className={sub.color}>{sub.icon}</div>
-                                                         <span className="truncate">{sub.name}</span>
-                                                     </NavLink>
-                                                 ))}
+                                                    >
+                                                        {location.pathname === sub.path && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />}
+                                                        <div className={sub.color}>{sub.icon}</div>
+                                                        <span className="truncate">{sub.name}</span>
+                                                    </NavLink>
+                                                ))}
                                             </div>
                                         )}
                                     </>
@@ -439,7 +439,7 @@ export default function MainLayout() {
 
                 {/* 3. Main Content Area */}
                 <main className="flex-1 flex flex-col p-4 md:p-8 min-w-0">
-                    <div className="max-w-6xl w-full mx-auto">
+                    <div className={`w-full ${location.pathname.includes('-ads') ? '' : 'max-w-7xl mx-auto'}`}>
                         {/* Breadcrumb */}
                         <nav className="flex items-center gap-2 text-xs text-gray-400 mb-2">
                             <a href="/" className="hover:text-blue-600">Home</a>

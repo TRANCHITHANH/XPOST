@@ -1020,12 +1020,7 @@ export default function SocialAccounts() {
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
-                                                            {account.accountIdentifier ? (
-                                                                <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded truncate max-w-[120px]" title={account.accountIdentifier}>
-                                                                    {account.accountIdentifier}
-                                                                </span>
-                                                            ) : null}
-                                                            {account.accountIdentifier && <span>•</span>}
+
                                                             <span title={new Date(account.createdAtUtc).toLocaleString('vi-VN')}>
                                                                 {new Date(account.createdAtUtc).toLocaleDateString('vi-VN')}
                                                             </span>

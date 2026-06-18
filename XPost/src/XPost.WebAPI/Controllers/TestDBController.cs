@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using XPost.Domain.Entities;
 using XPost.Infrastructure.Persistence;
 
@@ -35,6 +36,44 @@ public class TestDBController : ControllerBase
             await _db.SaveChangesAsync();
 
             return Ok("Success");
+        }
+        catch (Exception ex)
+        {
+            return Ok(new {
+                Message = ex.InnerException?.Message ?? ex.Message,
+                FullException = ex.ToString()
+            });
+        }
+    }
+
+    [HttpGet("orders")]
+    public async Task<IActionResult> DumpOrders()
+    {
+        try
+        {
+            var orders = await _db.Orders
+                .IgnoreQueryFilters()
+                .ToListAsync();
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            return Ok(new {
+                Message = ex.InnerException?.Message ?? ex.Message,
+                FullException = ex.ToString()
+            });
+        }
+    }
+
+    [HttpGet("accounts")]
+    public async Task<IActionResult> DumpAccounts()
+    {
+        try
+        {
+            var accounts = await _db.SocialAccounts
+                .IgnoreQueryFilters()
+                .ToListAsync();
+            return Ok(accounts);
         }
         catch (Exception ex)
         {

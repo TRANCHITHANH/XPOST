@@ -163,7 +163,6 @@ export default function TargetSelector({ value, onChange }: TargetSelectorProps)
                                 </div>
                                 <div className="text-xs text-gray-500">
                                     {platformNames[account.platform] || 'Khác'}
-                                    {account.accountIdentifier && ` · ${account.accountIdentifier}`}
                                 </div>
                             </div>
                         </div>

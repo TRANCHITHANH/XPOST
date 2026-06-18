@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using XPost.Application.Interfaces;
 using XPost.Domain.Entities;
 using XPost.Domain.Interfaces;
+using XPost.Infrastructure.Persistence;
 
 namespace XPost.WebAPI.Controllers;
 
@@ -17,18 +20,21 @@ public class PageManagementController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISensitiveContentDetector _sensitiveContentDetector;
     private readonly IConfiguration _configuration;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly string _graphApiBase = "https://graph.facebook.com/v19.0";
 
     public PageManagementController(
         IRepository<SocialAccount> accountRepository,
         IHttpClientFactory httpClientFactory,
         ISensitiveContentDetector sensitiveContentDetector,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IUnitOfWork unitOfWork)
     {
         _accountRepository = accountRepository;
         _httpClientFactory = httpClientFactory;
         _sensitiveContentDetector = sensitiveContentDetector;
         _configuration = configuration;
+        _unitOfWork = unitOfWork;
     }
 
     private async Task<SocialAccount?> GetValidAccount(Guid accountId)
@@ -416,9 +422,39 @@ public class PageManagementController : ControllerBase
             var root = document.RootElement;
             
             var result = new Dictionary<string, object>();
+            
+            // Lấy danh sách ID cuộc trò chuyện đã bị ẩn/xóa từ CustomHeadersJson
+            var hiddenIds = new List<string>();
+            if (!string.IsNullOrEmpty(account.CustomHeadersJson))
+            {
+                try
+                {
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(account.CustomHeadersJson);
+                    if (dict != null && dict.TryGetValue("deletedConversations", out var list))
+                    {
+                        hiddenIds = list;
+                    }
+                }
+                catch { /* Bỏ qua nếu JSON không hợp lệ */ }
+            }
+
             if (root.TryGetProperty("data", out var data))
             {
-                result.Add("data", JsonSerializer.Deserialize<object>(data.GetRawText())!);
+                var conversationsList = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(data.GetRawText());
+                if (conversationsList != null)
+                {
+                    // Lọc bỏ những cuộc trò chuyện có ID nằm trong danh sách đã xóa
+                    conversationsList = conversationsList.Where(c => 
+                        c.TryGetValue("id", out var idVal) && 
+                        idVal != null && 
+                        !hiddenIds.Contains(idVal.ToString() ?? "")
+                    ).ToList();
+                    result.Add("data", conversationsList);
+                }
+                else
+                {
+                    result.Add("data", new List<object>());
+                }
             }
             else 
             {
@@ -656,5 +692,505 @@ public class PageManagementController : ControllerBase
         
         int code = (int)response.StatusCode;
         return StatusCode(code == 401 || code == 403 ? 400 : code, respString);
+    }
+
+    [HttpDelete("{accountId}/conversations/{convId}")]
+    public async Task<IActionResult> DeleteConversation(Guid accountId, string convId)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound(new { error = "Account not found or invalid platform." });
+
+            var hiddenIds = new List<string>();
+            var dict = new Dictionary<string, List<string>>();
+
+            if (!string.IsNullOrEmpty(account.CustomHeadersJson))
+            {
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(account.CustomHeadersJson);
+                    if (parsed != null)
+                    {
+                        dict = parsed;
+                        if (dict.TryGetValue("deletedConversations", out var list))
+                        {
+                            hiddenIds = list;
+                        }
+                    }
+                }
+                catch { /* Ignore and overwrite if invalid */ }
+            }
+
+            if (!hiddenIds.Contains(convId))
+            {
+                hiddenIds.Add(convId);
+            }
+
+            dict["deletedConversations"] = hiddenIds;
+            account.CustomHeadersJson = JsonSerializer.Serialize(dict);
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _accountRepository.UpdateAsync(account);
+            await _unitOfWork.CompleteAsync();
+
+            return Ok(new { success = true, message = "Conversation hidden successfully." });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] DeleteConversation Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in DeleteConversation", details = ex.Message });
+        }
+    }
+
+    [HttpGet("{accountId}/conversations/{psid}/orders")]
+    public async Task<IActionResult> GetConversationOrders(
+        Guid accountId, 
+        string psid, 
+        [FromServices] ApplicationDbContext db, 
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var pageId = account.AccountIdentifier;
+            if (string.IsNullOrEmpty(pageId)) return BadRequest("PageIdentifier is missing");
+
+            Console.WriteLine($"\n[DEBUG] GetConversationOrders: accountId={accountId}, psid={psid}, pageId={pageId}, tenantId={account.TenantId ?? Guid.Empty}");
+            var orders = await db.Orders
+                .IgnoreQueryFilters()
+                .Where(o => (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId) 
+                            && o.PageId == pageId 
+                            && o.Psid == psid)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new
+                {
+                    o.Id,
+                    sentAtUtc = o.CreatedAtUtc,
+                    fullName = o.FullName,
+                    phoneNumber = o.PhoneNumber,
+                    email = o.Email,
+                    address = o.Address,
+                    selectedItem = o.SelectedItem,
+                    status = o.Status
+                })
+                .ToListAsync(ct);
+
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] GetConversationOrders Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in GetConversationOrders", details = ex.Message });
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{accountId}/orders")]
+    public async Task<IActionResult> GetPageOrders(
+        Guid accountId, 
+        [FromServices] ApplicationDbContext db, 
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var pageId = account.AccountIdentifier;
+            if (string.IsNullOrEmpty(pageId)) return BadRequest("PageIdentifier is missing");
+
+            Console.WriteLine($"\n[DEBUG] GetPageOrders: accountId={accountId}, pageId={pageId}, tenantId={account.TenantId ?? Guid.Empty}");
+            var orders = await db.Orders
+                .IgnoreQueryFilters()
+                .Where(o => (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId) 
+                            && o.PageId == pageId)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new
+                {
+                    o.Id,
+                    sentAtUtc = o.CreatedAtUtc,
+                    fullName = o.FullName,
+                    phoneNumber = o.PhoneNumber,
+                    email = o.Email,
+                    address = o.Address,
+                    selectedItem = o.SelectedItem,
+                    status = o.Status
+                })
+                .ToListAsync(ct);
+
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] GetPageOrders Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in GetPageOrders", details = ex.Message });
+        }
+    }
+
+    [HttpDelete("{accountId}/orders/{orderId}")]
+    public async Task<IActionResult> DeleteOrder(
+        Guid accountId, 
+        Guid orderId, 
+        [FromServices] ApplicationDbContext db, 
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var order = await db.Orders
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == orderId && (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId), ct);
+
+            if (order == null) return NotFound("Order not found");
+
+            db.Orders.Remove(order);
+            await db.SaveChangesAsync(ct);
+ 
+            return Ok(new { message = "Order deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] DeleteOrder Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in DeleteOrder", details = ex.Message });
+        }
+    }
+
+    public class UpdateOrderStatusRequest
+    {
+        public string Status { get; set; } = string.Empty;
+    }
+
+    [HttpPost("{accountId}/orders/{orderId}/status")]
+    public async Task<IActionResult> UpdateOrderStatus(
+        Guid accountId, 
+        Guid orderId, 
+        [FromBody] UpdateOrderStatusRequest req,
+        [FromServices] ApplicationDbContext db,
+        [FromServices] IMessengerService messengerService,
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var order = await db.Orders
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == orderId && (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId), ct);
+
+            if (order == null) return NotFound("Order not found");
+
+            var oldStatus = order.Status;
+            var newStatus = req.Status?.Trim() ?? "Pending";
+            
+            order.Status = newStatus;
+            await db.SaveChangesAsync(ct);
+
+            // If toggled from not-Confirmed to Confirmed, send Messenger notification
+            if (newStatus.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) && 
+                !oldStatus.Equals("Confirmed", StringComparison.OrdinalIgnoreCase))
+            {
+                var chatbot = await db.Chatbots
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(c => c.MessengerPageId == order.PageId && c.IsActive, ct);
+
+                if (chatbot != null && !string.IsNullOrEmpty(chatbot.MessengerPageToken))
+                {
+                    var pageToken = chatbot.MessengerPageToken;
+                    var msgText = $"Dạ, đơn hàng với các dịch vụ/thiết bị:\n" +
+                                  $"{order.SelectedItem}\n\n" +
+                                  $"Của anh/chị đã được xác nhận đặt hàng thành công! 🎉 Cảm ơn anh/chị đã tin tưởng và ủng hộ chúng em. ❤️";
+
+                    // Ghi nhận câu xác nhận của Bot vào DB
+                    var session = await db.ChatbotSessions
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(s => s.ChatbotId == chatbot.Id && s.Psid == order.Psid && s.IsActive, ct);
+
+                    if (session != null)
+                    {
+                        var botMid = $"ord_conf_{DateTime.UtcNow.Ticks}_{Guid.NewGuid():N}";
+                        db.ChatbotMessages.Add(new ChatbotMessage
+                        {
+                            TenantId = chatbot.TenantId,
+                            SessionId = session.Id,
+                            Mid = botMid,
+                            SenderId = order.PageId,
+                            RecipientId = order.Psid,
+                            Text = msgText,
+                            IsFromUser = false,
+                            SentAtUtc = DateTime.UtcNow
+                        });
+                        session.LastInteractionAtUtc = DateTime.UtcNow;
+                        session.UpdatedAt = DateTime.UtcNow;
+                        await db.SaveChangesAsync(ct);
+
+                        // SignalR event to UI chat
+                        var hubContext = HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<XPost.WebAPI.Hubs.MessengerHub>>();
+                        await hubContext.Clients.All.SendAsync("ReceiveMessengerEvent", new
+                        {
+                            chatbotId = chatbot.Id,
+                            sessionId = session.Id,
+                            psid = order.Psid,
+                            customerName = session.CustomerName,
+                            customerAvatarUrl = session.CustomerAvatarUrl,
+                            message = msgText,
+                            isFromUser = false,
+                            timestamp = DateTime.UtcNow.ToString("o"),
+                            tenantId = chatbot.TenantId
+                        }, ct);
+                    }
+
+                    // Send text to Messenger
+                    var quickReplies = HelperParseButtons(chatbot.KnowledgeBase);
+                    await messengerService.SendTextWithQuickRepliesAsync(pageToken, order.Psid, msgText, quickReplies, ct);
+                }
+            }
+
+    [HttpGet("{accountId}/conversations/{psid}/complaints")]
+    public async Task<IActionResult> GetConversationComplaints(
+        Guid accountId, 
+        string psid, 
+        [FromServices] ApplicationDbContext db, 
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var pageId = account.AccountIdentifier;
+            if (string.IsNullOrEmpty(pageId)) return BadRequest("PageIdentifier is missing");
+
+            var complaints = await db.Complaints
+                .IgnoreQueryFilters()
+                .Where(o => (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId) 
+                            && o.PageId == pageId 
+                            && o.Psid == psid)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new
+                {
+                    o.Id,
+                    sentAtUtc = o.CreatedAtUtc,
+                    fullName = o.FullName,
+                    phoneNumber = o.PhoneNumber,
+                    email = o.Email,
+                    content = o.Content,
+                    status = o.Status
+                })
+                .ToListAsync(ct);
+
+            return Ok(complaints);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] GetConversationComplaints Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in GetConversationComplaints", details = ex.Message });
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{accountId}/complaints")]
+    public async Task<IActionResult> GetPageComplaints(
+        Guid accountId, 
+        [FromServices] ApplicationDbContext db, 
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var pageId = account.AccountIdentifier;
+            if (string.IsNullOrEmpty(pageId)) return BadRequest("PageIdentifier is missing");
+
+            var complaints = await db.Complaints
+                .IgnoreQueryFilters()
+                .Where(o => (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId) 
+                            && o.PageId == pageId)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .Select(o => new
+                {
+                    o.Id,
+                    sentAtUtc = o.CreatedAtUtc,
+                    fullName = o.FullName,
+                    phoneNumber = o.PhoneNumber,
+                    email = o.Email,
+                    content = o.Content,
+                    status = o.Status
+                })
+                .ToListAsync(ct);
+
+            return Ok(complaints);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] GetPageComplaints Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in GetPageComplaints", details = ex.Message });
+        }
+    }
+
+    [HttpDelete("{accountId}/complaints/{complaintId}")]
+    public async Task<IActionResult> DeleteComplaint(
+        Guid accountId, 
+        Guid complaintId, 
+        [FromServices] ApplicationDbContext db, 
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var complaint = await db.Complaints
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == complaintId && (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId), ct);
+
+            if (complaint == null) return NotFound("Complaint not found");
+
+            db.Complaints.Remove(complaint);
+            await db.SaveChangesAsync(ct);
+ 
+            return Ok(new { message = "Complaint deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] DeleteComplaint Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in DeleteComplaint", details = ex.Message });
+        }
+    }
+
+    public class UpdateComplaintStatusRequest
+    {
+        public string Status { get; set; } = string.Empty;
+    }
+
+    [HttpPost("{accountId}/complaints/{complaintId}/status")]
+    public async Task<IActionResult> UpdateComplaintStatus(
+        Guid accountId, 
+        Guid complaintId, 
+        [FromBody] UpdateComplaintStatusRequest req,
+        [FromServices] ApplicationDbContext db,
+        [FromServices] IMessengerService messengerService,
+        CancellationToken ct)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound("Account not found");
+
+            var complaint = await db.Complaints
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == complaintId && (account.TenantId == null ? o.TenantId == null : o.TenantId == account.TenantId), ct);
+
+            if (complaint == null) return NotFound("Complaint not found");
+
+            var oldStatus = complaint.Status;
+            var newStatus = req.Status?.Trim() ?? "Pending";
+            
+            complaint.Status = newStatus;
+            await db.SaveChangesAsync(ct);
+
+            // If toggled from not-Processed to Processed, send Messenger notification
+            if (newStatus.Equals("Processed", StringComparison.OrdinalIgnoreCase) && 
+                !oldStatus.Equals("Processed", StringComparison.OrdinalIgnoreCase))
+            {
+                var chatbot = await db.Chatbots
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(c => c.MessengerPageId == complaint.PageId && c.IsActive, ct);
+
+                if (chatbot != null && !string.IsNullOrEmpty(chatbot.MessengerPageToken))
+                {
+                    var pageToken = chatbot.MessengerPageToken;
+                    var msgText = $"Dạ, yêu cầu khiếu nại của anh/chị về nội dung:\n" +
+                                  $"\"{complaint.Content}\"\n\n" +
+                                  $"Đã được chúng em xử lý thành công! Xin lỗi anh/chị vì sự bất tiện này và cảm ơn anh/chị đã đóng góp ý kiến. ❤️";
+
+                    // Ghi nhận câu xác nhận của Bot vào DB
+                    var session = await db.ChatbotSessions
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(s => s.ChatbotId == chatbot.Id && s.Psid == complaint.Psid && s.IsActive, ct);
+
+                    if (session != null)
+                    {
+                        var botMid = $"comp_proc_{DateTime.UtcNow.Ticks}_{Guid.NewGuid():N}";
+                        db.ChatbotMessages.Add(new ChatbotMessage
+                        {
+                            TenantId = chatbot.TenantId,
+                            SessionId = session.Id,
+                            Mid = botMid,
+                            SenderId = complaint.PageId,
+                            RecipientId = complaint.Psid,
+                            Text = msgText,
+                            IsFromUser = false,
+                            SentAtUtc = DateTime.UtcNow
+                        });
+                        session.LastInteractionAtUtc = DateTime.UtcNow;
+                        session.UpdatedAt = DateTime.UtcNow;
+                        await db.SaveChangesAsync(ct);
+
+                        // SignalR event to UI chat
+                        var hubContext = HttpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<XPost.WebAPI.Hubs.MessengerHub>>();
+                        await hubContext.Clients.All.SendAsync("ReceiveMessengerEvent", new
+                        {
+                            chatbotId = chatbot.Id,
+                            sessionId = session.Id,
+                            psid = complaint.Psid,
+                            customerName = session.CustomerName,
+                            customerAvatarUrl = session.CustomerAvatarUrl,
+                            message = msgText,
+                            isFromUser = false,
+                            timestamp = DateTime.UtcNow.ToString("o"),
+                            tenantId = chatbot.TenantId
+                        }, ct);
+                    }
+
+                    // Send text to Messenger
+                    var quickReplies = HelperParseButtons(chatbot.KnowledgeBase);
+                    await messengerService.SendTextWithQuickRepliesAsync(pageToken, complaint.Psid, msgText, quickReplies, ct);
+                }
+            }
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] UpdateComplaintStatus Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in UpdateComplaintStatus", details = ex.Message });
+        }
+    }
+
+
+    private static List<ChatbotButtonDto> HelperParseButtons(string? knowledgeBaseJson)
+    {
+        var result = new List<ChatbotButtonDto>();
+        if (string.IsNullOrWhiteSpace(knowledgeBaseJson)) return result;
+        try
+        {
+            var doc = JsonDocument.Parse(knowledgeBaseJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return result;
+
+            foreach (var el in doc.RootElement.EnumerateArray())
+            {
+                if (el.ValueKind != JsonValueKind.Object) continue;
+
+                var icon    = el.TryGetProperty("icon",    out var ic) ? ic.GetString() ?? "" : "";
+                var title   = el.TryGetProperty("title",   out var ti) ? ti.GetString() ?? "" : "";
+                var payload = el.TryGetProperty("payload", out var pa) ? pa.GetString() ?? "" : "";
+                var type    = el.TryGetProperty("type",    out var ty) ? ty.GetString() ?? "postback" : "postback";
+
+                if (!string.IsNullOrWhiteSpace(title))
+                    result.Add(new ChatbotButtonDto(icon, title, payload, type));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing KnowledgeBase buttons JSON: {ex.Message}");
+        }
+        return result;
     }
 }

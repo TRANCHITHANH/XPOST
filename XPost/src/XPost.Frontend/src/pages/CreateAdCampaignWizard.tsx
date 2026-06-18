@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import api, { API_BASE_URL } from '../lib/axios';
 import toast from 'react-hot-toast';
 
@@ -33,53 +33,6 @@ interface FacebookPage {
   avatarUrl?: string;
 }
 
-const MOCK_CREATIVE_TEMPLATES = [
-  {
-    category: '🌿 Cây cảnh / Quà tặng',
-    adName: 'Creative_SenDa_ComboGift_2026',
-    title: 'Sen Đá Mini Để Bàn - Mua 3 Tặng 1',
-    bodyText: '🌿 Mang không gian xanh vào bàn làm việc giúp tăng 20% hiệu suất và giảm stress hiệu quả.\n🎁 Ưu đãi độc quyền hôm nay: Tặng ngay chậu sứ cao cấp và sỏi trắng trang trí khi mua combo 3 sen đá mini bất kỳ.\n👉 Đặt hàng ngay để nhận ưu đãi!',
-    mediaUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=60',
-    callToAction: 'SHOP_NOW',
-    destinationUrl: 'https://xpost.vn/collections/sen-da-mini'
-  },
-  {
-    category: '👗 Thời trang / Mỹ phẩm',
-    adName: 'Creative_Fashion_SummerSale_2026',
-    title: 'BST Hè Năng Động - Giảm Đến 50%',
-    bodyText: '🔥 Bùng nổ ưu đãi mùa hè! BST Hè 2026 với chất liệu đũi tơ tự nhiên siêu mát, thấm hút mồ hôi cực tốt đã chính thức lên kệ.\n✨ Độc quyền online: Giảm giá trực tiếp 50% + Freeship cho 100 đơn hàng đầu tiên.\n🛍️ Nhanh tay săn ngay Deal hời kẻo lỡ!',
-    mediaUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop&q=60',
-    callToAction: 'SHOP_NOW',
-    destinationUrl: 'https://xpost.vn/collections/fashion-summer'
-  },
-  {
-    category: '🍔 F&B / Ẩm thực',
-    adName: 'Creative_FB_ComboLunch_2026',
-    title: 'Ăn Trưa Trọn Vị - Chỉ Từ 39K + Miễn Phí Trà Đá',
-    bodyText: '🍱 Trưa nay ăn gì? Ghé ngay Tiệm Cơm Văn Phòng XPost để thưởng thức thực đơn 15 món chuẩn vị cơm nhà nấu.\n🛵 Freeship bán kính 3km cho đơn hàng đặt trước 10h30 sáng.\n📞 Hotline đặt món: 1900 xxxx. Nhấn nút bên dưới để xem thực đơn hôm nay!',
-    mediaUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=60',
-    callToAction: 'CONTACT_US',
-    destinationUrl: 'https://xpost.vn/collections/lunch-menu'
-  },
-  {
-    category: '💻 SaaS / Phần mềm',
-    adName: 'Creative_SaaS_MarketingAutomation_2026',
-    title: 'XPost - Giải Pháp Quản Lý Fanpage Tự Động 4.0',
-    bodyText: '🚀 Bạn mệt mỏi vì phải trả lời inbox khách hàng lúc nửa đêm? XPost giúp bạn tự động hóa 90% quy trình CSKH và tối ưu ngân sách quảng cáo.\n✅ Dùng thử miễn phí 14 ngày đầy đủ tính năng.\n🎯 Đăng ký ngay hôm nay để nhận ưu đãi giảm 30% gói năm!',
-    mediaUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=60',
-    callToAction: 'SIGN_UP',
-    destinationUrl: 'https://xpost.vn/signup'
-  },
-  {
-    category: '🏢 Bất động sản / Dự án',
-    adName: 'Creative_RealEstate_GrandPark_2026',
-    title: 'Căn Hộ Studio Cao Cấp - Trả Trước Chỉ 300 Triệu',
-    bodyText: '💎 Sở hữu ngay căn hộ studio cao cấp tại trung tâm đô thị xanh với chính sách thanh toán siêu giãn.\n🏡 Hỗ trợ vay 70% lãi suất 0% trong 24 tháng. Chiết khấu ngay 5% khi thanh toán sớm.\n📍 Vị trí đắc địa, kết nối trực tiếp ga Metro. Đăng ký nhận bảng giá và tham quan nhà mẫu ngay!',
-    mediaUrl: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&auto=format&fit=crop&q=60',
-    callToAction: 'LEARN_MORE',
-    destinationUrl: 'https://xpost.vn/projects/studio-apartment'
-  }
-];
 
 interface Ad {
   id: string;
@@ -251,10 +204,23 @@ const MOCK_CAMPAIGNS = (_accountId: string): Campaign[] => [
   }
 ];
 
+
+
 export default function CreateAdCampaignWizard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [currentStep, setCurrentStep] = useState(1);
+  const editAdSetData = location.state?.adSet;
+  const editAdData = location.state?.ad;
+  const editCampaignData = location.state?.campaign;
+  const isEditCampaignMode = !!location.state?.editCampaign;
+  const isEditAdSetMode = !!editAdSetData && !editAdData;
+  const isEditAdMode = !!editAdData;
+  const isEditMode = isEditCampaignMode || isEditAdSetMode || isEditAdMode;
+
+  // Start step depends on mode
+  const initialStep = isEditAdMode ? 3 : (isEditAdSetMode ? 2 : 1);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -277,7 +243,7 @@ export default function CreateAdCampaignWizard() {
 
   // Ad Set & Ad Creative selection modes (new vs existing)
   const [adSetMode, setAdSetMode] = useState<'create' | 'existing'>('create');
-  const [adMode, setAdMode] = useState<'create' | 'existing' | 'skip' | 'post' | 'fb_post'>('create');
+  const [adMode, setAdMode] = useState<'create' | 'skip' | 'post' | 'existing'>('create');
 
   const [xpostPosts, setXpostPosts] = useState<any[]>([]);
   const [selectedPostId, setSelectedPostId] = useState<string>('');
@@ -300,17 +266,215 @@ export default function CreateAdCampaignWizard() {
     return currentCampaign?.adSets || [];
   }, [currentCampaign]);
 
-  const existingAds = useMemo(() => [
-    { id: 'ad_01', name: 'Creative_01 - Image Banner Sale 30%', title: 'Giảm giá cực sâu - Mua ngay!', bodyText: 'Chương trình khuyến mãi lớn nhất trong năm dành cho khách hàng mới.' },
-    { id: 'ad_02', name: 'Creative_02 - Video Reels Sen Đá', title: 'Sen đá mini đẹp xuất sắc', bodyText: 'Tuyển tập những mẫu sen đá dễ thương nhất quả đất.' },
-    { id: 'ad_03', name: 'Creative_03 - Carousel Sales Đa Sản Phẩm', title: 'Bộ sưu tập cây văn phòng lọc không khí', bodyText: 'Làm xanh không gian làm việc của bạn với các loại cây dễ chăm sóc.' }
-  ], []);
+
   const [bidStrategy, setBidStrategy] = useState('LOWEST_COST');
 
   // Ad Set Targeting States
+  // Location targeting states
   const [locationSearch, setLocationSearch] = useState('');
-  const [selectedLocations, setSelectedLocations] = useState<string[]>(['Hà Nội', 'TP. Hồ Chí Minh']);
+  const [selectedLocations, setSelectedLocations] = useState<{
+    name: string;
+    key: string;
+    type: string;
+    radius: number;
+    lat?: number;
+    lng?: number;
+  }[]>([
+    { name: 'Hà Nội', key: '1581130', type: 'city', radius: 35, lat: 21.03, lng: 105.83 },
+    { name: 'TP. Hồ Chí Minh', key: '1566083', type: 'city', radius: 35, lat: 10.82, lng: 106.63 }
+  ]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [activeRadiusDropdown, setActiveRadiusDropdown] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<{
+    name: string;
+    key: string;
+    type: string;
+    placeId?: string;
+    lat?: number;
+    lng?: number;
+    isGoogle?: boolean;
+  }[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+  // Dynamic Google Maps Places script loading
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return;
+    const win = window as any;
+    if (win.google?.maps?.places) return;
+
+    const scriptId = 'google-maps-places-script';
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=vi&region=VN`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Debounced query suggestions handler
+  useEffect(() => {
+    const query = locationSearch.trim();
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setIsLoadingSuggestions(true);
+      try {
+        const win = window as any;
+        const cleanVietnamAddress = (address: string) => {
+          let parts = address.replace(/, Việt Nam$/i, '').split(',').map(p => p.trim());
+          
+          if (parts.length >= 3 && parts[parts.length - 1] === 'Thành phố Hồ Chí Minh' && parts[parts.length - 2] === 'Thành phố Thủ Đức') {
+              if (parts[0] !== 'Thành phố Thủ Đức') {
+                  parts.splice(parts.length - 2, 1);
+              }
+          }
+          
+          if (parts.length >= 2 && parts[parts.length - 1] === parts[parts.length - 2]) {
+              parts.pop();
+          }
+          
+          return parts.join(', ');
+        };
+
+        // 1. Google Places Autocomplete if script loaded
+        if (win.google?.maps?.places) {
+          const autocompleteService = new win.google.maps.places.AutocompleteService();
+          const predictions = await new Promise<any[]>((resolve) => {
+            autocompleteService.getPlacePredictions(
+              {
+                input: query,
+                componentRestrictions: { country: 'vn' },
+                types: ['geocode', 'establishment']
+              },
+              (results, status) => {
+                if (status === 'OK' && results) {
+                  resolve(results);
+                } else {
+                  resolve([]);
+                }
+              }
+            );
+          });
+
+          if (predictions.length > 0) {
+            const mapped = predictions.map(p => {
+              let type = 'custom';
+              if (p.types.includes('country')) type = 'country';
+              else if (p.types.includes('administrative_area_level_1')) type = 'region';
+              else if (p.types.includes('locality') || p.types.includes('administrative_area_level_2')) type = 'city';
+
+              return {
+                name: cleanVietnamAddress(p.description),
+                key: `google_${p.place_id}`,
+                placeId: p.place_id,
+                type: type,
+                isGoogle: true
+              };
+            });
+            setSuggestions(mapped);
+            setIsLoadingSuggestions(false);
+            return;
+          }
+        }
+
+        // 2. OpenStreetMap Nominatim fallback
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=vn&format=json&addressdetails=1&limit=8`;
+        const res = await fetch(url, {
+          headers: {
+            'Accept-Language': 'vi',
+            'User-Agent': 'XPost/1.0'
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.map((item: any) => {
+            let type = 'custom';
+            if (item.class === 'boundary' && item.type === 'administrative') {
+              const importance = item.importance || 0;
+              if (importance > 0.6) type = 'region';
+              else if (importance > 0.4) type = 'city';
+            }
+            return {
+              name: cleanVietnamAddress(item.display_name),
+              key: `osm_${item.place_id || Date.now()}`,
+              type,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon),
+              isGoogle: false
+            };
+          });
+          setSuggestions(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching autocomplete suggestions:', err);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [locationSearch]);
+
+  const handleSelectSuggestion = (suggestion: any) => {
+    if (suggestion.isGoogle && suggestion.placeId) {
+      setIsLoadingSuggestions(true);
+      const win = window as any;
+      const dummyDiv = document.createElement('div');
+      const service = new win.google.maps.places.PlacesService(dummyDiv);
+      service.getDetails(
+        {
+          placeId: suggestion.placeId,
+          fields: ['geometry']
+        },
+        (place, status) => {
+          setIsLoadingSuggestions(false);
+          if (status === 'OK' && place && place.geometry?.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            setSelectedLocations(prev => {
+              if (prev.some(loc => loc.name === suggestion.name)) return prev;
+              return [
+                ...prev,
+                {
+                  name: suggestion.name,
+                  key: suggestion.key,
+                  type: suggestion.type,
+                  radius: 35,
+                  lat,
+                  lng
+                }
+              ];
+            });
+          } else {
+            toast.error('Không thể lấy tọa độ từ Google Maps cho địa điểm này.');
+          }
+        }
+      );
+    } else {
+      setSelectedLocations(prev => {
+        if (prev.some(loc => loc.name === suggestion.name)) return prev;
+        return [
+          ...prev,
+          {
+            name: suggestion.name,
+            key: suggestion.key,
+            type: suggestion.type,
+            radius: 35,
+            lat: suggestion.lat,
+            lng: suggestion.lng
+          }
+        ];
+      });
+    }
+    setLocationSearch('');
+    setShowLocationDropdown(false);
+  };
 
   const [interestInput, setInterestInput] = useState('');
   const [showInterestDropdown, setShowInterestDropdown] = useState(false);
@@ -356,10 +520,52 @@ export default function CreateAdCampaignWizard() {
   });
 
   // Autocomplete data lists
-  const availableLocations = useMemo(() => [
-    'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng',
-    'Nha Trang', 'Huế', 'Biên Hòa', 'Vũng Tàu', 'Buôn Ma Thuột'
-  ], []);
+  // Maps Vietnamese city/province name → Meta Ads API location key
+  // https://developers.facebook.com/docs/marketing-api/targeting-specs/geo
+  // Maps Vietnamese city/province name → Meta Ads API location key + coordinates for map
+  const VN_LOCATION_MAP: Record<string, { key: string; name: string; type: string; lat: number; lng: number }> = useMemo(() => ({
+    'Hà Nội': { key: '1581130', name: 'Hanoi', type: 'city', lat: 21.03, lng: 105.83 },
+    'TP. Hồ Chí Minh': { key: '1566083', name: 'Ho Chi Minh City', type: 'city', lat: 10.82, lng: 106.63 },
+    'Đà Nẵng': { key: '1584610', name: 'Da Nang', type: 'city', lat: 16.07, lng: 108.22 },
+    'Cần Thơ': { key: '1587053', name: 'Can Tho', type: 'city', lat: 10.04, lng: 105.78 },
+    'Hải Phòng': { key: '1580309', name: 'Hai Phong', type: 'city', lat: 20.86, lng: 106.68 },
+    'Nha Trang': { key: '1572715', name: 'Nha Trang', type: 'city', lat: 12.24, lng: 109.19 },
+    'Huế': { key: '1562822', name: 'Hue', type: 'city', lat: 16.46, lng: 107.59 },
+    'Biên Hòa': { key: '1566049', name: 'Bien Hoa', type: 'city', lat: 10.97, lng: 106.82 },
+    'Vũng Tàu': { key: '1562044', name: 'Vung Tau', type: 'city', lat: 10.35, lng: 107.08 },
+    'Buôn Ma Thuột': { key: '1557976', name: 'Buon Ma Thuot', type: 'city', lat: 12.68, lng: 108.05 },
+    'Quy Nhơn': { key: '1569851', name: 'Quy Nhon', type: 'city', lat: 13.77, lng: 109.22 },
+    'Thái Nguyên': { key: '1566158', name: 'Thai Nguyen', type: 'city', lat: 21.59, lng: 105.85 },
+    'Nam Định': { key: '1572081', name: 'Nam Dinh', type: 'city', lat: 20.43, lng: 106.16 },
+    'Vinh': { key: '1561002', name: 'Vinh', type: 'city', lat: 18.68, lng: 105.68 },
+    'Đà Lạt': { key: '1581352', name: 'Da Lat', type: 'city', lat: 11.94, lng: 108.44 },
+    'Long Xuyên': { key: '1562218', name: 'Long Xuyen', type: 'city', lat: 9.79, lng: 105.45 },
+    'Mỹ Tho': { key: '1569895', name: 'My Tho', type: 'city', lat: 10.36, lng: 106.36 },
+    'Rạch Giá': { key: '1562014', name: 'Rach Gia', type: 'city', lat: 10.01, lng: 105.08 },
+    'Phan Thiết': { key: '1570170', name: 'Phan Thiet', type: 'city', lat: 10.93, lng: 108.10 },
+    'Hội An': { key: '1583992', name: 'Hoi An', type: 'city', lat: 15.88, lng: 108.34 },
+    'Tây Ninh': { key: '1566148', name: 'Tay Ninh', type: 'city', lat: 11.31, lng: 106.10 },
+    'Bình Dương': { key: '1581131', name: 'Binh Duong', type: 'region', lat: 11.16, lng: 106.65 },
+    'Đồng Nai': { key: '1581342', name: 'Dong Nai', type: 'region', lat: 11.08, lng: 107.18 },
+    'Bình Phước': { key: '1581129', name: 'Binh Phuoc', type: 'region', lat: 11.75, lng: 106.72 },
+    'Bà Rịa - Vũng Tàu': { key: '1562045', name: 'Ba Ria-Vung Tau', type: 'region', lat: 10.50, lng: 107.25 },
+    'Long An': { key: '1562219', name: 'Long An', type: 'region', lat: 10.68, lng: 106.25 },
+    'Tiền Giang': { key: '1569896', name: 'Tien Giang', type: 'region', lat: 10.35, lng: 106.36 },
+    'Hà Tĩnh': { key: '1561003', name: 'Ha Tinh', type: 'city', lat: 18.34, lng: 105.91 },
+    'Quảng Ngãi': { key: '1569852', name: 'Quang Ngai', type: 'city', lat: 15.12, lng: 108.80 },
+    'Quảng Nam': { key: '1569853', name: 'Quang Nam', type: 'region', lat: 15.57, lng: 108.47 },
+    'Quảng Ninh': { key: '1581133', name: 'Quang Ninh', type: 'region', lat: 21.15, lng: 107.20 },
+    'Bắc Ninh': { key: '1581134', name: 'Bac Ninh', type: 'region', lat: 21.18, lng: 106.07 },
+    'Khánh Hòa': { key: '1581138', name: 'Khanh Hoa', type: 'region', lat: 12.30, lng: 109.10 },
+    'Thanh Hóa': { key: '1581140', name: 'Thanh Hoa', type: 'region', lat: 20.00, lng: 105.50 },
+    'Nghệ An': { key: '1581142', name: 'Nghe An', type: 'region', lat: 19.30, lng: 104.90 },
+    'Hải Dương': { key: '1581145', name: 'Hai Duong', type: 'region', lat: 20.94, lng: 106.33 },
+    'Thừa Thiên Huế': { key: '1581146', name: 'Thua Thien Hue', type: 'region', lat: 16.40, lng: 107.60 },
+    'Lâm Đồng': { key: '1581147', name: 'Lam Dong', type: 'region', lat: 11.60, lng: 108.00 },
+    'Toàn quốc (VN)': { key: 'VN', name: 'Vietnam', type: 'country', lat: 16.00, lng: 107.83 },
+  }), []);
+
+  const availableLocations = useMemo(() => Object.keys(VN_LOCATION_MAP), [VN_LOCATION_MAP]);
 
   const availableInterests = useMemo(() => [
     'cây cảnh', 'làm vườn', 'nội thất', 'thời trang', 'fitness',
@@ -375,6 +581,77 @@ export default function CreateAdCampaignWizard() {
   useEffect(() => {
     fetchConnectedAccounts();
     fetchXPostPosts();
+
+    // Pre-fill campaign data when editing campaign (step 1)
+    if (isEditCampaignMode && editCampaignData) {
+      setFormData(prev => ({
+        ...prev,
+        name: editCampaignData.name || '',
+        objective: editCampaignData.objective || 'OUTCOME_TRAFFIC',
+        status: editCampaignData.status || 'PAUSED',
+        budget: editCampaignData.budget || 150000,
+        startTimeUtc: editCampaignData.startTimeUtc
+          ? new Date(editCampaignData.startTimeUtc).toISOString().substring(0, 16)
+          : prev.startTimeUtc,
+        endTimeUtc: editCampaignData.endTimeUtc
+          ? new Date(editCampaignData.endTimeUtc).toISOString().substring(0, 16)
+          : '',
+      }));
+      setExistingCampaignName(editCampaignData.name || null);
+    }
+
+    if (isEditAdSetMode && editAdSetData) {
+      setAdMode('skip'); // Edit ad set only, skip ad creation
+      setFormData(prev => ({
+        ...prev,
+        adSetName: editAdSetData.name || '',
+        billingEvent: editAdSetData.billingEvent || 'IMPRESSIONS',
+        targetingAgeMin: editAdSetData.targetingAgeMin || 18,
+        targetingAgeMax: editAdSetData.targetingAgeMax || 45,
+        budget: editAdSetData.dailyBudget || 150000,
+        name: editCampaignData?.name || prev.name
+      }));
+      if (editAdSetData.targetingLocations) {
+        try {
+          const parsedLocs = JSON.parse(editAdSetData.targetingLocations);
+          if (Array.isArray(parsedLocs) && parsedLocs.length > 0) {
+            setSelectedLocations(parsedLocs);
+          }
+        } catch (e) { }
+      }
+    }
+
+    if (isEditAdMode && editAdData && editAdSetData) {
+      setAdMode('create');
+      setFormData(prev => ({
+        ...prev,
+        // Ad Set Data
+        adSetName: editAdSetData.name || '',
+        billingEvent: editAdSetData.billingEvent || 'IMPRESSIONS',
+        targetingAgeMin: editAdSetData.targetingAgeMin || 18,
+        targetingAgeMax: editAdSetData.targetingAgeMax || 45,
+        budget: editAdSetData.dailyBudget || 150000,
+        name: editCampaignData?.name || prev.name,
+        // Ad Data
+        adName: editAdData.name || '',
+        title: editAdData.title || '',
+        bodyText: editAdData.bodyText || '',
+        mediaUrl: editAdData.mediaUrl || '',
+        destinationUrl: editAdData.destinationUrl || prev.destinationUrl,
+        callToAction: editAdData.callToAction || 'LEARN_MORE',
+      }));
+      if (editAdData.mediaUrl) {
+        setLocalPreview(editAdData.mediaUrl);
+      }
+      if (editAdSetData.targetingLocations) {
+        try {
+          const parsedLocs = JSON.parse(editAdSetData.targetingLocations);
+          if (Array.isArray(parsedLocs) && parsedLocs.length > 0) {
+            setSelectedLocations(parsedLocs);
+          }
+        } catch (e) { }
+      }
+    }
 
     const qCampaignId = searchParams.get('campaignId');
     const qAdSetId = searchParams.get('adSetId');
@@ -411,28 +688,11 @@ export default function CreateAdCampaignWizard() {
     if (qAdSetMode === 'create' || qAdSetMode === 'existing') {
       setAdSetMode(qAdSetMode as 'create' | 'existing');
     }
-    if (qAdMode === 'create' || qAdMode === 'existing' || qAdMode === 'skip' || qAdMode === 'post' || qAdMode === 'fb_post') {
-      setAdMode(qAdMode as 'create' | 'existing' | 'skip' | 'post' | 'fb_post');
+    if (qAdMode === 'create' || qAdMode === 'existing' || qAdMode === 'skip' || qAdMode === 'post') {
+      setAdMode(qAdMode as 'create' | 'existing' | 'skip' | 'post');
     }
 
-    const facebookPostId = searchParams.get('facebookPostId');
-    if (qAdMode === 'fb_post' && facebookPostId) {
-      setSelectedFbPostId(facebookPostId);
-      const decodedContent = postContent ? decodeURIComponent(postContent) : '';
-      const decodedImage = postImage ? decodeURIComponent(postImage) : '';
-      setFormData(prev => ({
-        ...prev,
-        facebookPostId: facebookPostId,
-        title: 'Bài viết Facebook có sẵn',
-        bodyText: decodedContent,
-        mediaUrl: decodedImage,
-        adName: qAdName ? decodeURIComponent(qAdName) : `Ad_FB_${facebookPostId}`
-      }));
-      if (decodedImage) {
-        setLocalPreview(decodedImage);
-        setMediaMode('url');
-      }
-    } else if (postTitle || postContent || postImage) {
+    if (postTitle || postContent || postImage) {
       setAdMode('create');
       const decodedTitle = postTitle ? decodeURIComponent(postTitle) : '';
       const decodedContent = postContent ? decodeURIComponent(postContent) : '';
@@ -443,7 +703,7 @@ export default function CreateAdCampaignWizard() {
         title: decodedTitle || prev.title,
         bodyText: decodedContent || prev.bodyText,
         mediaUrl: decodedImage || prev.mediaUrl,
-        adName: decodedTitle ? `Ad_${decodedTitle.replace(/\s+/g, '_')}` : prev.adName
+        adName: decodedTitle ? decodedTitle : prev.adName
       }));
       if (decodedImage) {
         setLocalPreview(decodedImage);
@@ -509,6 +769,7 @@ export default function CreateAdCampaignWizard() {
   };
 
   useEffect(() => {
+    if (isEditMode) return;
     if (adSetMode === 'existing' && currentCampaignAdSets.length > 0) {
       if (queryAdSetId) {
         const matchedAdSet = currentCampaignAdSets.find((x: any) => x.id === queryAdSetId);
@@ -606,10 +867,10 @@ export default function CreateAdCampaignWizard() {
 
   const fetchXPostPosts = async () => {
     try {
-      const res = await api.get('/posts');
-      setXpostPosts(res.data?.items || []);
+      const res = await api.get('/keywords');
+      setXpostPosts(res.data || []);
     } catch (err) {
-      console.error('Error fetching XPost posts in wizard:', err);
+      console.error('Error fetching Keywords in wizard:', err);
     }
   };
 
@@ -621,40 +882,6 @@ export default function CreateAdCampaignWizard() {
       console.error('Error fetching payment status in wizard, setting default to true:', err);
       setHasPaymentMethod(true);
     }
-  };
-
-  const handleFillMockData = () => {
-    setFormData(prev => ({
-      ...prev,
-      name: prev.name || 'Campaign_SenDa_Premium_BestSeller_2026',
-      objective: 'OUTCOME_TRAFFIC',
-      budget: 250000,
-
-      // Ad Set
-      adSetName: 'Nhóm 01 - Tệp Yêu Thích Cây Cảnh & Không Gian Xanh',
-      billingEvent: 'IMPRESSIONS',
-      targetingAgeMin: 22,
-      targetingAgeMax: 40,
-      targetingGenders: 'ALL',
-      targetingLocations: 'VN',
-      targetingInterests: ['cây cảnh', 'làm vườn', 'nội thất'],
-
-      // Ad Creative
-      adName: 'Creative_SenDa_BestSeller_Banner',
-      title: 'Sen Đá Mini Để Bàn - Mua 3 Tặng 1',
-      bodyText: 'Không gian xanh giúp thanh lọc tâm hồn và giảm stress. Ưu đãi độc quyền hôm nay: Tặng chậu sứ và sỏi trắng trang trí khi mua combo 3 cây.',
-      mediaUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=60',
-      destinationUrl: 'https://xpost.vn/collections/sen-da-mini',
-      callToAction: 'SHOP_NOW'
-    }));
-
-    setSelectedLocations(['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng']);
-    setBudgetStrategy('CAMPAIGN');
-    setBudgetType('DAILY');
-    setAdSetMode('create');
-    setAdMode('create');
-
-    toast.success('Đã tự động điền dữ liệu mẫu 3 bước!');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -744,16 +971,13 @@ export default function CreateAdCampaignWizard() {
     if (step === 2) {
       if (!formData.adSetName.trim()) return 'Vui lòng nhập Tên nhóm quảng cáo';
       if (!hideBudget && budgetStrategy === 'ADSET' && formData.budget < 25000) return 'Ngân sách nhóm quảng cáo tối thiểu ngày là 25,000 VND';
+      if (selectedLocations.length === 0) return 'Vui lòng chọn ít nhất một địa điểm mục tiêu';
     }
     if (step === 3) {
       if (!formData.adName.trim()) return 'Vui lòng nhập Tên quảng cáo sáng tạo';
-      if (adMode !== 'fb_post') {
-        if (!formData.title.trim()) return 'Vui lòng nhập Tiêu đề chính';
-        if (!formData.bodyText.trim()) return 'Vui lòng nhập Văn bản quảng cáo';
-        if (!formData.mediaUrl) return 'Vui lòng upload ảnh quảng cáo';
-      } else {
-        if (!formData.facebookPostId) return 'Vui lòng chọn bài viết Facebook';
-      }
+      if (!formData.title.trim()) return 'Vui lòng nhập Tiêu đề chính';
+      if (!formData.bodyText.trim()) return 'Vui lòng nhập Văn bản quảng cáo';
+      if (!formData.mediaUrl) return 'Vui lòng upload ảnh quảng cáo';
     }
     return null;
   };
@@ -769,6 +993,129 @@ export default function CreateAdCampaignWizard() {
 
   const handleBack = () => {
     setCurrentStep(prev => prev - 1);
+  };
+
+  const handleUpdateSubmit = async () => {
+    const error = validateStep(currentStep);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      toast.loading('Đang đồng bộ thay đổi lên Facebook Ads...', { id: 'submit' });
+
+      // Build targeting locations
+      const hasCountry = selectedLocations.some(loc => loc.type === 'country' || loc.key === 'VN');
+      const targetingLocationsValue = hasCountry
+        ? 'VN'
+        : JSON.stringify(selectedLocations.map(loc => ({
+          key: loc.key,
+          name: loc.name,
+          type: loc.type,
+          country_code: 'VN',
+          radius: loc.radius,
+          lat: loc.lat,
+          lng: loc.lng
+        })));
+
+      if (isEditCampaignMode && editCampaignData) {
+        await api.put(`/facebookads/campaigns/${editCampaignData.id}`, {
+          name: formData.name,
+          objective: formData.objective,
+          status: formData.status,
+          budget: formData.budget,
+          startTimeUtc: new Date(formData.startTimeUtc).toISOString(),
+          endTimeUtc: formData.endTimeUtc ? new Date(formData.endTimeUtc).toISOString() : null
+        });
+        toast.success('Đã cập nhật và đồng bộ Chiến dịch thành công!', { id: 'submit' });
+        navigate('/facebook-ads');
+        return;
+      }
+
+      if (isEditAdSetMode && editAdSetData) {
+        // Update campaign name if changed
+        if (editCampaignData && formData.name !== editCampaignData.name) {
+          await api.put(`/facebookads/campaigns/${editCampaignData.id}`, {
+            name: formData.name,
+            objective: editCampaignData.objective,
+            status: editCampaignData.status,
+            budget: editCampaignData.budget,
+            startTimeUtc: editCampaignData.startTimeUtc,
+            endTimeUtc: editCampaignData.endTimeUtc
+          });
+        }
+
+        // Update adset
+        await api.put(`/facebookads/adsets/${editAdSetData.id}`, {
+          name: formData.adSetName,
+          billingEvent: formData.billingEvent,
+          dailyBudget: formData.budget,
+          targetingAgeMin: formData.targetingAgeMin,
+          targetingAgeMax: formData.targetingAgeMax,
+          targetingGenders: formData.targetingGenders,
+          targetingLocations: targetingLocationsValue,
+          targetingInterests: formData.targetingInterests,
+        });
+        toast.success('Đã cập nhật và đồng bộ Nhóm Quảng Cáo thành công!', { id: 'submit' });
+        navigate('/facebook-ads');
+        return;
+      }
+
+      if (isEditAdMode && editAdData && editAdSetData) {
+        // Update campaign name if changed
+        if (editCampaignData && formData.name !== editCampaignData.name) {
+          await api.put(`/facebookads/campaigns/${editCampaignData.id}`, {
+            name: formData.name,
+            objective: editCampaignData.objective,
+            status: editCampaignData.status,
+            budget: editCampaignData.budget,
+            startTimeUtc: editCampaignData.startTimeUtc,
+            endTimeUtc: editCampaignData.endTimeUtc
+          });
+        }
+
+        // Update adset
+        await api.put(`/facebookads/adsets/${editAdSetData.id}`, {
+          name: formData.adSetName,
+          billingEvent: formData.billingEvent,
+          dailyBudget: formData.budget,
+          targetingAgeMin: formData.targetingAgeMin,
+          targetingAgeMax: formData.targetingAgeMax,
+          targetingGenders: formData.targetingGenders,
+          targetingLocations: targetingLocationsValue,
+          targetingInterests: formData.targetingInterests,
+        });
+
+        // Update ad creative
+        await api.put(`/facebookads/ads/${editAdData.id}`, {
+          name: formData.adName,
+          title: formData.title,
+          bodyText: formData.bodyText,
+          mediaUrl: formData.mediaUrl,
+          destinationUrl: formData.destinationUrl,
+          callToAction: formData.callToAction,
+          facebookPostId: formData.facebookPostId
+        });
+
+        toast.success('Đã cập nhật và đồng bộ Quảng Cáo thành công!', { id: 'submit' });
+        navigate('/facebook-ads');
+        return;
+      }
+
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || '';
+      toast.error(
+        <div className="space-y-1.5 text-left">
+          <p className="font-extrabold text-xs text-red-600">Lỗi đồng bộ</p>
+          <p className="text-[11px] leading-normal text-slate-700">{msg}</p>
+        </div>,
+        { id: 'submit', duration: 8000 }
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = async (targetStatus: 'DRAFT' | 'PAUSED' | 'ACTIVE') => {
@@ -801,6 +1148,20 @@ export default function CreateAdCampaignWizard() {
             : 'Đang khởi tạo và kích hoạt chiến dịch trên Meta Marketing API...';
       toast.loading(loadingMsg, { id: 'submit' });
 
+      // Build targeting locations: prefer specific city keys, fall back to country VN
+      const hasCountry = selectedLocations.some(loc => loc.type === 'country' || loc.key === 'VN');
+      const targetingLocationsValue = hasCountry
+        ? 'VN'
+        : JSON.stringify(selectedLocations.map(loc => ({
+          key: loc.key,
+          name: loc.name,
+          type: loc.type,
+          country_code: 'VN',
+          radius: loc.radius,
+          lat: loc.lat,
+          lng: loc.lng
+        })));
+
       const payload = {
         ...formData,
         status: targetStatus,
@@ -808,10 +1169,56 @@ export default function CreateAdCampaignWizard() {
         adSetId: queryAdSetId || null,
         adSetMode,
         adMode,
+        targetingLocations: targetingLocationsValue,
         targetingInterests: formData.targetingInterests,
         startTimeUtc: new Date(formData.startTimeUtc).toISOString(),
         endTimeUtc: formData.endTimeUtc ? new Date(formData.endTimeUtc).toISOString() : null
       };
+
+      if (isEditAdSetMode && editAdSetData) {
+        await api.put(`/facebookads/adsets/${editAdSetData.id}`, {
+          name: formData.adSetName,
+          billingEvent: formData.billingEvent,
+          dailyBudget: formData.budget,
+          targetingAgeMin: formData.targetingAgeMin,
+          targetingAgeMax: formData.targetingAgeMax,
+          targetingGenders: formData.targetingGenders,
+          targetingLocations: targetingLocationsValue,
+          targetingInterests: formData.targetingInterests,
+        });
+        toast.success('Đã cập nhật Nhóm Quảng Cáo thành công!', { id: 'submit' });
+        navigate('/facebook-ads');
+        return;
+      }
+
+      if (isEditAdMode && editAdData && editAdSetData) {
+        // Update Ad Set First
+        await api.put(`/facebookads/adsets/${editAdSetData.id}`, {
+          name: formData.adSetName,
+          billingEvent: formData.billingEvent,
+          dailyBudget: formData.budget,
+          targetingAgeMin: formData.targetingAgeMin,
+          targetingAgeMax: formData.targetingAgeMax,
+          targetingGenders: formData.targetingGenders,
+          targetingLocations: targetingLocationsValue,
+          targetingInterests: formData.targetingInterests,
+        });
+
+        // Update Ad Creative
+        await api.put(`/facebookads/ads/${editAdData.id}`, {
+          name: formData.adName,
+          title: formData.title,
+          bodyText: formData.bodyText,
+          mediaUrl: formData.mediaUrl,
+          destinationUrl: formData.destinationUrl,
+          callToAction: formData.callToAction,
+          facebookPostId: formData.facebookPostId
+        });
+
+        toast.success('Đã cập nhật Quảng Cáo và Nhóm Quảng Cáo thành công!', { id: 'submit' });
+        navigate('/facebook-ads');
+        return;
+      }
 
       await api.post(`/facebookads/campaigns?adAccountId=${formData.adAccountId}`, payload);
       setFormData(prev => ({ ...prev, status: targetStatus }));
@@ -879,12 +1286,12 @@ export default function CreateAdCampaignWizard() {
 
   const objectiveMeta = useMemo(() => {
     const objectives: Record<string, { label: string; icon: string; desc: string }> = {
-      OUTCOME_TRAFFIC: { label: 'Traffic (Lưu lượng)', icon: '🎯', desc: 'Gửi mọi người đến trang đích, trang web của bạn hoặc ứng dụng.' },
-      OUTCOME_ENGAGEMENT: { label: 'Engagement (Tương tác)', icon: '💬', desc: 'Nhận nhiều tin nhắn, lượt xem video, tương tác bài viết hoặc thích trang.' },
-      OUTCOME_LEADS: { label: 'Leads (Tìm kiếm khách hàng)', icon: '⚡', desc: 'Thu hút khách hàng tiềm năng cho doanh nghiệp của bạn thông qua tin nhắn hoặc biểu mẫu.' },
-      OUTCOME_SALES: { label: 'Sales (Doanh số)', icon: '🛍️', desc: 'Tìm những người có khả năng mua sản phẩm hoặc dịch vụ của bạn.' },
-      OUTCOME_AWARENESS: { label: 'Awareness (Nhận thức)', icon: '👁️', desc: 'Hiển thị quảng cáo của bạn cho những người có khả năng nhớ đến chúng nhất.' },
-      APP_PROMOTION: { label: 'App Promotion (Quảng bá ứng dụng)', icon: '📱', desc: 'Tìm kiếm những người mới cài đặt và tiếp tục sử dụng ứng dụng của bạn.' }
+      OUTCOME_TRAFFIC: { label: 'Traffic', icon: '🎯', desc: 'Gửi mọi người đến trang đích, trang web của bạn hoặc ứng dụng.' },
+      OUTCOME_ENGAGEMENT: { label: 'Engagement', icon: '💬', desc: 'Nhận nhiều tin nhắn, lượt xem video, tương tác bài viết hoặc thích trang.' },
+      OUTCOME_LEADS: { label: 'Leads', icon: '⚡', desc: 'Thu hút khách hàng tiềm năng cho doanh nghiệp của bạn thông qua tin nhắn hoặc biểu mẫu.' },
+      OUTCOME_SALES: { label: 'Sales', icon: '🛍️', desc: 'Tìm những người có khả năng mua sản phẩm hoặc dịch vụ của bạn.' },
+      OUTCOME_AWARENESS: { label: 'Awareness', icon: '👁️', desc: 'Hiển thị quảng cáo của bạn cho những người có khả năng nhớ đến chúng nhất.' },
+      APP_PROMOTION: { label: 'App Promotion', icon: '📱', desc: 'Tìm kiếm những người mới cài đặt và tiếp tục sử dụng ứng dụng của bạn.' }
     };
     return objectives[formData.objective] || objectives.OUTCOME_TRAFFIC;
   }, [formData.objective]);
@@ -949,43 +1356,48 @@ export default function CreateAdCampaignWizard() {
           </div>
 
           {/* Stepper Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {[
-              { num: 1, label: 'Chiến dịch Setup' },
-              { num: 2, label: 'Nhóm Quảng Cáo Config' },
-              { num: 3, label: 'Nội dung Sáng tạo' }
-            ].filter(step => step.num < 3 || adMode !== 'skip').map(step => {
-              const isCompleted = currentStep > step.num;
-              const isActive = currentStep === step.num;
-              return (
-                <div key={step.num} className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all ${isCompleted
-                    ? 'bg-green-600 text-white shadow-sm'
-                    : isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
-                      : 'bg-slate-100 text-slate-400'
-                    }`}>
-                    {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : step.num}
+          {isEditMode ? (
+            <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 py-1.5 px-3 rounded-full text-xs font-bold shadow-sm select-none">
+              ✏️ Chế độ Chỉnh sửa: {isEditCampaignMode ? 'Chiến dịch' : isEditAdSetMode ? 'Nhóm Quảng Cáo' : 'Quảng Cáo'}
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-6">
+              {[
+                { num: 1, label: 'Chiến dịch Setup' },
+                { num: 2, label: 'Nhóm Quảng Cáo Config' },
+                { num: 3, label: 'Nội dung Sáng tạo' }
+              ].filter(step => step.num < 3 || adMode !== 'skip').map(step => {
+                const isCompleted = currentStep > step.num;
+                const isActive = currentStep === step.num;
+                return (
+                  <div key={step.num} className="flex items-center gap-2">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all ${isCompleted
+                      ? 'bg-green-600 text-white shadow-sm'
+                      : isActive
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/10'
+                        : 'bg-slate-100 text-slate-400'
+                      }`}>
+                      {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : step.num}
+                    </div>
+                    <span className={`text-xs font-bold transition-all ${isActive ? 'text-slate-900 font-black' : isCompleted ? 'text-green-700' : 'text-slate-400'
+                      }`}>{step.label}</span>
+                    {step.num < (adMode === 'skip' ? 2 : 3) && <ChevronRight className="w-4 h-4 text-slate-300" />}
                   </div>
-                  <span className={`text-xs font-bold transition-all ${isActive ? 'text-slate-900 font-black' : isCompleted ? 'text-green-700' : 'text-slate-400'
-                    }`}>{step.label}</span>
-                  {step.num < (adMode === 'skip' ? 2 : 3) && <ChevronRight className="w-4 h-4 text-slate-300" />}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleFillMockData}
-              type="button"
-              className="text-[10px] font-black bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 py-1.5 px-3 rounded-full flex items-center gap-1 shadow-sm transition-all hover:-translate-y-0.5 select-none"
-            >
-              💡 Điền dữ liệu mẫu
-            </button>
-            <span className="text-[10px] font-bold bg-slate-50 border border-slate-200 text-slate-500 py-1.5 px-3 rounded-full flex items-center gap-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Draft Mode
-            </span>
+            {isEditMode ? (
+              <span className="text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-700 py-1.5 px-3 rounded-full flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Edit Mode
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold bg-slate-50 border border-slate-200 text-slate-500 py-1.5 px-3 rounded-full flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Draft Mode
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -1003,9 +1415,19 @@ export default function CreateAdCampaignWizard() {
                 <div>
                   <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest block">Trình tạo quảng cáo</span>
                   <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide mt-0.5">
-                    {currentStep === 1 && `Thiết lập chiến dịch (Step 1 of ${adMode === 'skip' ? 2 : 3})`}
-                    {currentStep === 2 && `Cấu hình Nhóm Quảng Cáo (Step 2 of ${adMode === 'skip' ? 2 : 3})`}
-                    {currentStep === 3 && 'Nội Dung Sáng Tạo & CTA (Step 3 of 3)'}
+                    {isEditMode ? (
+                      <>
+                        {isEditCampaignMode && 'Chỉnh sửa cấu hình Chiến dịch'}
+                        {isEditAdSetMode && 'Chỉnh sửa cấu hình Nhóm Quảng Cáo'}
+                        {isEditAdMode && 'Chỉnh sửa nội dung & Mẫu Quảng Cáo'}
+                      </>
+                    ) : (
+                      <>
+                        {currentStep === 1 && `Thiết lập chiến dịch (Step 1 of ${adMode === 'skip' ? 2 : 3})`}
+                        {currentStep === 2 && `Cấu hình Nhóm Quảng Cáo (Step 2 of ${adMode === 'skip' ? 2 : 3})`}
+                        {currentStep === 3 && 'Nội Dung Sáng Tạo & CTA (Step 3 of 3)'}
+                      </>
+                    )}
                   </h2>
                 </div>
                 <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
@@ -1128,7 +1550,7 @@ export default function CreateAdCampaignWizard() {
 
                     {/* Searchable Account Selector */}
                     <div className="space-y-1.5 relative">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tài khoản quảng cáo</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider blocK">Tài khoản quảng cáo</label>
                       <button
                         type="button"
                         disabled={!formData.pageId}
@@ -1137,8 +1559,8 @@ export default function CreateAdCampaignWizard() {
                           setShowPageDropdown(false);
                         }}
                         className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-xs font-bold transition-all select-none shadow-sm ${!formData.pageId
-                            ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
                           }`}
                       >
                         <span className="flex items-center gap-2">
@@ -1204,23 +1626,23 @@ export default function CreateAdCampaignWizard() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        disabled={!!existingCampaignName}
+                        disabled={(!isEditCampaignMode && !!existingCampaignName) || isEditAdMode || isEditAdSetMode}
                         placeholder="Ví dụ: Campaign_Senda_Traffic_BrandAwareness_062026"
-                        className={`w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all shadow-sm ${existingCampaignName ? 'opacity-70 cursor-not-allowed bg-slate-100' : ''}`}
+                        className={`w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all shadow-sm ${(!isEditCampaignMode && existingCampaignName) ? 'opacity-70 cursor-not-allowed bg-slate-100' : ''}`}
                       />
                     </div>
 
                     {/* Objective Cards Selector */}
                     <div className="space-y-3">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Mục tiêu chiến dịch (Objective)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Mục tiêu chiến dịch</label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         {[
-                          { id: 'OUTCOME_TRAFFIC', title: 'Lưu lượng (Traffic)', icon: '🎯', desc: 'Thúc đẩy lượt truy cập trang web, trang đích.' },
-                          { id: 'OUTCOME_ENGAGEMENT', title: 'Tương tác (Engagement)', icon: '💬', desc: 'Nhận bình luận, tin nhắn, lượt tương tác.' },
-                          { id: 'OUTCOME_LEADS', title: 'Khách hàng (Leads)', icon: '⚡', desc: 'Lấy thông tin khách hàng tiềm năng quan tâm.' },
-                          { id: 'OUTCOME_SALES', title: 'Doanh số (Sales)', icon: '🛍️', desc: 'Tìm người mua hàng trực tiếp hoặc chuyển đổi.' },
-                          { id: 'OUTCOME_AWARENESS', title: 'Nhận thức (Awareness)', icon: '👁️', desc: 'Tiếp cận tối đa lượng người để nhớ thương hiệu.' },
-                          { id: 'APP_PROMOTION', title: 'Ứng dụng (App)', icon: '📱', desc: 'Tăng lượt tải và tương tác trong app di động.' }
+                          { id: 'OUTCOME_TRAFFIC', title: 'Lưu lượng', icon: '🎯', desc: 'Thúc đẩy lượt truy cập trang web, trang đích.' },
+                          { id: 'OUTCOME_ENGAGEMENT', title: 'Tương tác', icon: '💬', desc: 'Nhận bình luận, tin nhắn, lượt tương tác.' },
+                          { id: 'OUTCOME_LEADS', title: 'Khách hàng', icon: '⚡', desc: 'Lấy thông tin khách hàng tiềm năng quan tâm.' },
+                          { id: 'OUTCOME_SALES', title: 'Doanh số', icon: '🛍️', desc: 'Tìm người mua hàng trực tiếp hoặc chuyển đổi.' },
+                          { id: 'OUTCOME_AWARENESS', title: 'Nhận thức', icon: '👁️', desc: 'Tiếp cận tối đa lượng người để nhớ thương hiệu.' },
+                          { id: 'APP_PROMOTION', title: 'Ứng dụng', icon: '📱', desc: 'Tăng lượt tải và tương tác trong app di động.' }
                         ].map(obj => {
                           const isSelected = formData.objective === obj.id;
                           return (
@@ -1388,9 +1810,9 @@ export default function CreateAdCampaignWizard() {
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Trạng thái khởi tạo</label>
                       <div className="grid grid-cols-3 gap-2.5">
                         {[
-                          { id: 'ACTIVE', label: '🟢 Hoạt động (Active)' },
-                          { id: 'PAUSED', label: '⏸️ Tạm dừng (Paused)' },
-                          { id: 'DRAFT', label: '📝 Bản nháp (Draft)' }
+                          { id: 'ACTIVE', label: '🟢 Hoạt động' },
+                          { id: 'PAUSED', label: '⏸️ Tạm dừng' },
+                          { id: 'DRAFT', label: '📝 Bản nháp' }
                         ].map(st => (
                           <button
                             key={st.id}
@@ -1414,11 +1836,14 @@ export default function CreateAdCampaignWizard() {
                 {currentStep === 2 && (
                   <div className="space-y-6 animate-in fade-in duration-200">
 
+
+
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Thiết lập nhóm quảng cáo (Ad Set)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Thiết lập nhóm quảng cáo</label>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <select
                           value={adSetMode}
+                          disabled={isEditAdMode || isEditAdSetMode}
                           onChange={(e) => {
                             const mode = e.target.value as 'create' | 'existing';
                             setAdSetMode(mode);
@@ -1430,16 +1855,22 @@ export default function CreateAdCampaignWizard() {
                               setQueryAdSetId(currentCampaignAdSets[0].id);
                             }
                           }}
-                          className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 transition-all shadow-sm"
+                          className={`bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-xs font-bold transition-all shadow-sm ${isEditAdMode || isEditAdSetMode ? 'opacity-70 cursor-not-allowed text-slate-500' : 'text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600'}`}
                         >
-                          <option value="create">🆕 Tạo nhóm quảng cáo</option>
-                          {(currentCampaignAdSets.length > 0 || adSetMode === 'existing') && (
-                            <option value="existing">📂 Chọn nhóm có sẵn</option>
+                          {isEditAdMode || isEditAdSetMode ? (
+                            <option value="create">✏️ Sửa nhóm quảng cáo hiện tại</option>
+                          ) : (
+                            <>
+                              <option value="create">🆕 Tạo nhóm quảng cáo</option>
+                              {(currentCampaignAdSets.length > 0 || adSetMode === 'existing') && (
+                                <option value="existing">📂 Chọn nhóm có sẵn</option>
+                              )}
+                            </>
                           )}
                         </select>
 
                         <div className="md:col-span-2">
-                          {adSetMode === 'create' ? (
+                          {(adSetMode === 'create' || isEditMode) ? (
                             <input
                               type="text"
                               name="adSetName"
@@ -1519,7 +1950,7 @@ export default function CreateAdCampaignWizard() {
                     {/* Lịch chạy (Start & End Time) */}
                     <div className="border border-slate-200/80 rounded-2xl p-5 bg-white space-y-4 shadow-sm">
                       <div className="space-y-1">
-                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Lịch chạy (Schedule)</h4>
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Lịch chạy</h4>
                         <p className="text-[10px] text-slate-400 font-medium">Thiết lập thời gian phân phối cho nhóm quảng cáo này.</p>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1534,7 +1965,7 @@ export default function CreateAdCampaignWizard() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-500 block">/nNgày kết thúc (Tùy chọn)</label>
+                          <label className="text-xs font-bold text-slate-500 block">Ngày kết thúc (Tùy chọn)</label>
                           <input
                             type="datetime-local"
                             name="endTimeUtc"
@@ -1548,7 +1979,7 @@ export default function CreateAdCampaignWizard() {
 
                     {/* Billing Event Selector */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Sự kiện tính phí (Billing Event)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Sự kiện tính phí</label>
                       <div className="grid grid-cols-3 gap-2.5">
                         {[
                           { id: 'IMPRESSIONS', label: 'CPM', desc: 'Mỗi 1000 lượt hiển thị' },
@@ -1571,64 +2002,230 @@ export default function CreateAdCampaignWizard() {
                       </div>
                     </div>
 
-                    {/* Location targeting with multi-select */}
-                    <div className="space-y-2 relative">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Địa điểm nhắm mục tiêu (Locations)</label>
+                    {/* ── Location Targeting ── Facebook Ads style ── */}
+                    <div className="space-y-0">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">* Vị trí
+                      </label>
 
-                      <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl shadow-sm min-h-12 items-center">
-                        {selectedLocations.map(loc => (
-                          <span key={loc} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-sm animate-in scale-in duration-100">
-                            <span>📍 {loc}</span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedLocations(prev => prev.filter(l => l !== loc))}
-                              className="text-slate-400 hover:text-red-500 font-black text-xs"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        ))}
-                        {selectedLocations.length === 0 && <span className="text-[10px] text-slate-400 font-bold ml-2">Chọn các thành phố hoặc địa điểm muốn phân phối</span>}
+                      {/* Selected locations display box */}
+                      <div className="border border-slate-200 rounded-t-xl bg-white overflow-hidden">
+                        {/* Included header */}
+                        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/80 border-b border-slate-100">
+                          <span className="text-[11px] font-black text-slate-600 uppercase tracking-wide">Việt Nam</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400 font-bold">Bao gồm</span>
+                            <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </div>
+                        </div>
+
+                        {/* Location chips list */}
+                        <div className="px-4 py-3 space-y-2.5 min-h-[52px]">
+                          {selectedLocations.length === 0 ? (
+                            <p className="text-[11px] text-slate-400 font-medium py-1">Chưa chọn địa điểm nào. Tìm kiếm địa điểm bên dưới.</p>
+                          ) : (
+                            selectedLocations.map(loc => {
+                              const typeLabel = loc.type === 'country' ? 'Quốc gia' : loc.type === 'region' ? 'Tỉnh' : 'Thành phố';
+                              const typeBg = loc.type === 'country' ? 'bg-purple-100 text-purple-700' : loc.type === 'region' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700';
+                              return (
+                                <div key={loc.key || loc.name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50/50 hover:bg-slate-50 rounded-xl border border-slate-200/60 transition-all group">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                                      <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-black text-slate-800 truncate">{loc.name}</p>
+                                      <p className="text-[9px] text-slate-400 font-medium">{loc.type === 'custom' ? 'Vị trí bản đồ' : 'Việt Nam'}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0">
+                                    {/* Inline Radius Slider */}
+                                    {loc.type !== 'country' && (
+                                      <div className="flex items-center gap-2 bg-white border border-slate-200/80 px-2.5 py-1 rounded-lg shadow-sm">
+                                        <span className="text-[9px] text-slate-400 font-bold">Bán kính:</span>
+                                        <input
+                                          type="range"
+                                          min="17"
+                                          max="80"
+                                          value={loc.radius === 0 ? 17 : loc.radius}
+                                          onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            setSelectedLocations(prev => prev.map(l => l.key === loc.key ? { ...l, radius: val } : l));
+                                          }}
+                                          className="w-24 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedLocations(prev => prev.map(l => l.key === loc.key ? { ...l, radius: l.radius === 0 ? 35 : 0 } : l));
+                                          }}
+                                          className="text-[10px] font-black text-blue-600 hover:underline min-w-[55px] text-right"
+                                        >
+                                          {loc.radius === 0 ? (loc.type === 'region' ? 'Chỉ tỉnh' : 'Chỉ TP') : `+${loc.radius}km`}
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${typeBg}`}>{typeLabel}</span>
+
+                                      {/* Delete button: only render if there is more than 1 selected location */}
+                                      {selectedLocations.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedLocations(prev => prev.filter(l => l.key !== loc.key))}
+                                          className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
 
-                      <div className="relative">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="Tìm thành phố (Ví dụ: Hà Nội, Đà Nẵng...)"
-                          value={locationSearch}
-                          onChange={e => {
-                            setLocationSearch(e.target.value);
-                            setShowLocationDropdown(true);
-                          }}
-                          onFocus={() => setShowLocationDropdown(true)}
-                          className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold text-slate-700 outline-none"
-                        />
+                      {/* Search bar — Facebook Ads style */}
+                      <div className="relative border border-t-0 border-slate-200 rounded-b-xl bg-white overflow-visible">
+                        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
+                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                          <input
+                            type="text"
+                            placeholder="Tìm kiếm vị trí (ví dụ: Quận 1, Q1, Hoàn Kiếm...)"
+                            value={locationSearch}
+                            onChange={e => {
+                              setLocationSearch(e.target.value);
+                              setShowLocationDropdown(true);
+                            }}
+                            onFocus={() => setShowLocationDropdown(true)}
+                            className="flex-1 bg-transparent text-xs font-bold text-slate-700 outline-none placeholder:text-slate-400 placeholder:font-normal"
+                          />
+                          {locationSearch && (
+                            <button type="button" onClick={() => { setLocationSearch(''); setShowLocationDropdown(false); }} className="text-slate-400 hover:text-slate-600">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </div>
 
-                        {showLocationDropdown && locationSearch.trim() && (
+                        {/* Dropdown results */}
+                        {showLocationDropdown && (locationSearch.trim() || suggestions.length > 0 || isLoadingSuggestions) && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={() => setShowLocationDropdown(false)} />
-                            <div className="absolute left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-slate-200/50 rounded-2xl shadow-xl py-2 z-50 max-h-48 overflow-y-auto px-1.5 space-y-0.5 animate-in fade-in duration-100">
-                              {availableLocations
-                                .filter(l => l.toLowerCase().includes(locationSearch.toLowerCase()) && !selectedLocations.includes(l))
-                                .map(loc => (
+                            <div className="absolute left-0 right-0 top-full bg-white border border-slate-200 shadow-2xl z-50 rounded-xl mt-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                              <div className="px-3 pt-2.5 pb-1 flex items-center justify-between border-b border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gợi ý địa điểm</p>
+                                {isLoadingSuggestions ? (
+                                  <p className="text-[9px] font-bold text-blue-500 animate-pulse flex items-center gap-1">
+                                    <Loader2 className="w-2.5 h-2.5 animate-spin" /> Đang tìm kiếm...
+                                  </p>
+                                ) : (
+                                  <p className="text-[9px] font-bold text-slate-300">Tìm thấy {suggestions.filter(s => !selectedLocations.some(sel => sel.name === s.name)).length} gợi ý</p>
+                                )}
+                              </div>
+                              <div className="max-h-56 overflow-y-auto">
+                                {isLoadingSuggestions && suggestions.length === 0 && (
+                                  <div className="flex flex-col items-center justify-center py-6 text-slate-400 text-xs gap-2">
+                                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                                    <span>Đang truy vấn dữ liệu bản đồ...</span>
+                                  </div>
+                                )}
+
+                                {!isLoadingSuggestions && suggestions.length === 0 && locationSearch.trim().length >= 2 && (
+                                  <div className="py-6 text-center text-slate-400 text-xs font-medium">
+                                    Không tìm thấy địa điểm phù hợp nào.
+                                  </div>
+                                )}
+
+                                {suggestions
+                                  .filter(loc => !selectedLocations.some(sel => sel.name === loc.name))
+                                  .map(loc => {
+                                    const typeLabel = loc.type === 'country' ? 'Quốc gia' : loc.type === 'region' ? 'Tỉnh / Vùng' : loc.type === 'city' ? 'Thành phố' : 'Bản đồ / Phường / Xã';
+                                    const typeBg = loc.type === 'country' ? 'bg-purple-100 text-purple-700' : loc.type === 'region' ? 'bg-amber-100 text-amber-700' : loc.type === 'city' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700';
+                                    const typeIcon = loc.type === 'country' ? '🌍' : loc.type === 'region' ? '🗺️' : loc.type === 'city' ? '🏙️' : '📍';
+                                    return (
+                                      <button
+                                        key={loc.key || loc.name}
+                                        type="button"
+                                        onClick={() => handleSelectSuggestion(loc)}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors text-left group/item border-b border-slate-50 last:border-b-0"
+                                      >
+                                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover/item:bg-blue-100 flex items-center justify-center shrink-0 text-sm transition-colors">
+                                          {typeIcon}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-black text-slate-800 truncate">{loc.name}</p>
+                                          <p className="text-[10px] text-slate-400 font-medium">Việt Nam</p>
+                                        </div>
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 ${typeBg}`}>{typeLabel}</span>
+                                      </button>
+                                    );
+                                  })}
+                              </div>
+                              {/* Add all Vietnam option */}
+                              {!selectedLocations.some(sel => sel.name === 'Toàn quốc (VN)') && (
+                                <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/50">
                                   <button
-                                    key={loc}
                                     type="button"
                                     onClick={() => {
-                                      setSelectedLocations(prev => [...prev, loc]);
+                                      setSelectedLocations([
+                                        {
+                                          name: 'Toàn quốc (VN)',
+                                          key: 'VN',
+                                          type: 'country',
+                                          radius: 0
+                                        }
+                                      ]);
                                       setLocationSearch('');
                                       setShowLocationDropdown(false);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-500/10 rounded-xl"
+                                    className="text-[11px] text-blue-600 font-black hover:underline flex items-center gap-1"
                                   >
-                                    📍 {loc} (Việt Nam)
+                                    🇺🇳 + Chọn toàn quốc Việt Nam
                                   </button>
-                                ))}
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
+
+
                       </div>
+
+                      {/* Quick-add popular cities */}
+                      {selectedLocations.length < 10 && !locationSearch && (
+                        <div className="mt-2">
+                          <p className="text-[10px] font-bold text-slate-400 mb-1.5">Thêm nhanh:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Bình Dương', 'Đồng Nai', 'Bắc Ninh', 'Quảng Ninh', 'Khánh Hòa', 'Hải Phòng', 'Cần Thơ', 'Thanh Hóa', 'Nghệ An', 'Bà Rịa - Vũng Tàu'].filter(l => !selectedLocations.some(sel => sel.name === l)).map(loc => (
+                              <button
+                                key={loc}
+                                type="button"
+                                onClick={() => {
+                                  const info = VN_LOCATION_MAP[loc];
+                                  setSelectedLocations(prev => [
+                                    ...prev,
+                                    {
+                                      name: loc,
+                                      key: info?.key || '',
+                                      type: info?.type || 'city',
+                                      radius: 35,
+                                      lat: info?.lat,
+                                      lng: info?.lng
+                                    }
+                                  ]);
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-full transition-colors"
+                              >
+                                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                {loc}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Age Range Slider simulation */}
@@ -1822,13 +2419,16 @@ export default function CreateAdCampaignWizard() {
                 {currentStep === 3 && (
                   <div className="space-y-6 animate-in fade-in duration-200">
 
+
+
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Thiết lập mẫu quảng cáo (Ad Creative)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Thiết lập tên quảng cáo</label>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <select
                           value={adMode}
+                          disabled={isEditAdSetMode}
                           onChange={(e) => {
-                            const mode = e.target.value as 'create' | 'existing' | 'post' | 'fb_post';
+                            const mode = e.target.value as 'create' | 'existing' | 'post';
                             setAdMode(mode);
                             if (mode === 'create') {
                               setFormData(prev => ({ ...prev, adName: '', title: '', bodyText: '', mediaUrl: '', facebookPostId: '' }));
@@ -1838,12 +2438,12 @@ export default function CreateAdCampaignWizard() {
                               if (xpostPosts.length > 0) {
                                 const post = xpostPosts[0];
                                 setSelectedPostId(post.id);
-                                const resolvedImg = post.featuredImageUrl ? resolveFileUrl(post.featuredImageUrl) : '';
+                                const resolvedImg = post.imageUrl ? resolveFileUrl(post.imageUrl) : '';
                                 setFormData(prev => ({
                                   ...prev,
-                                  adName: `Ad_${(post.title || '').replace(/\s+/g, '_')}`,
-                                  title: post.title || '',
-                                  bodyText: post.content || '',
+                                  adName: post.name || '',
+                                  title: post.name || '',
+                                  bodyText: post.generatedContent || '',
                                   mediaUrl: resolvedImg
                                 }));
                                 if (resolvedImg) {
@@ -1857,51 +2457,18 @@ export default function CreateAdCampaignWizard() {
                                 setFormData(prev => ({ ...prev, adName: '', title: '', bodyText: '', mediaUrl: '' }));
                                 setLocalPreview('');
                               }
-                            } else if (mode === 'fb_post') {
-                              if (fbPosts.length > 0) {
-                                const post = fbPosts[0];
-                                setSelectedFbPostId(post.facebookPostId);
-                                setFormData(prev => ({
-                                  ...prev,
-                                  facebookPostId: post.facebookPostId,
-                                  adName: `Ad_FB_${post.facebookPostId}`,
-                                  title: 'Bài viết Facebook có sẵn',
-                                  bodyText: post.message || '',
-                                  mediaUrl: post.fullPicture || ''
-                                }));
-                                if (post.fullPicture) {
-                                  setLocalPreview(post.fullPicture);
-                                  setMediaMode('url');
-                                } else {
-                                  setLocalPreview('');
-                                }
-                              } else {
-                                setSelectedFbPostId('');
-                                setFormData(prev => ({ ...prev, adName: '', title: '', bodyText: '', mediaUrl: '', facebookPostId: '' }));
-                                setLocalPreview('');
-                              }
-                            } else if (existingAds.length > 0) {
-                              setFormData(prev => ({ ...prev, facebookPostId: '' }));
-                              const ad = existingAds[0];
-                              setFormData(prev => ({
-                                ...prev,
-                                adName: ad.name,
-                                title: ad.title,
-                                bodyText: ad.bodyText,
-                                mediaUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60'
-                              }));
                             }
                           }}
                           className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 transition-all shadow-sm cursor-pointer animate-in fade-in"
                         >
-                          <option value="create">🆕 Tạo mẫu quảng cáo mới</option>
-                          <option value="post">📝 Chọn từ bài viết XPost</option>
-                          <option value="fb_post">📘 Chọn từ bài viết Facebook</option>
-                          <option value="existing">📂 Chọn mẫu có sẵn</option>
+                          <option value="create">
+                            {isEditMode ? '✏️ Sửa mẫu quảng cáo hiện tại' : '🆕 Tạo mẫu quảng cáo mới'}
+                          </option>
+                          <option value="post">🤖 Chọn từ Keyword AI</option>
                         </select>
 
                         <div className="md:col-span-2">
-                          {adMode === 'create' ? (
+                          {(adMode === 'create' || (isEditMode && adMode !== 'post')) ? (
                             <input
                               type="text"
                               name="adName"
@@ -1910,51 +2477,6 @@ export default function CreateAdCampaignWizard() {
                               placeholder="Đặt tên cho mẫu quảng cáo này..."
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all shadow-sm"
                             />
-                          ) : adMode === 'fb_post' ? (
-                            isLoadingFbPosts ? (
-                              <div className="flex items-center gap-2 py-2.5 px-4 text-xs font-medium text-slate-500 bg-slate-100 border border-slate-200 rounded-xl">
-                                <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
-                                <span>Đang tải các bài viết từ Facebook Page...</span>
-                              </div>
-                            ) : fbPosts.length > 0 ? (
-                              <div className="relative">
-                                <select
-                                  value={selectedFbPostId}
-                                  onChange={(e) => {
-                                    const selectedId = e.target.value;
-                                    setSelectedFbPostId(selectedId);
-                                    const post = fbPosts.find(p => p.facebookPostId === selectedId);
-                                    if (post) {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        facebookPostId: post.facebookPostId,
-                                        adName: `Ad_FB_${post.facebookPostId}`,
-                                        title: 'Bài viết Facebook có sẵn',
-                                        bodyText: post.message || '',
-                                        mediaUrl: post.fullPicture || ''
-                                      }));
-                                      if (post.fullPicture) {
-                                        setLocalPreview(post.fullPicture);
-                                        setMediaMode('url');
-                                      } else {
-                                        setLocalPreview('');
-                                      }
-                                    }
-                                  }}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 transition-all shadow-sm cursor-pointer pr-10"
-                                >
-                                  {fbPosts.map(p => (
-                                    <option key={p.id} value={p.facebookPostId}>
-                                      {p.message ? (p.message.length > 65 ? `${p.message.substring(0, 65)}...` : p.message) : `Bài viết không lời (${p.id})`}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-xs font-medium text-slate-500">
-                                ⚠️ Fanpage chưa có bài viết nào được đăng sẵn.
-                              </div>
-                            )
                           ) : adMode === 'post' ? (
                             xpostPosts.length > 0 ? (
                               <div className="relative">
@@ -1965,12 +2487,12 @@ export default function CreateAdCampaignWizard() {
                                     setSelectedPostId(selectedId);
                                     const post = xpostPosts.find(p => p.id === selectedId);
                                     if (post) {
-                                      const resolvedImg = post.featuredImageUrl ? resolveFileUrl(post.featuredImageUrl) : '';
+                                      const resolvedImg = post.imageUrl ? resolveFileUrl(post.imageUrl) : '';
                                       setFormData(prev => ({
                                         ...prev,
-                                        adName: `Ad_${(post.title || '').replace(/\s+/g, '_')}`,
-                                        title: post.title || '',
-                                        bodyText: post.content || '',
+                                        adName: post.name || '',
+                                        title: post.name || '',
+                                        bodyText: post.generatedContent || '',
                                         mediaUrl: resolvedImg
                                       }));
                                       if (resolvedImg) {
@@ -1985,241 +2507,147 @@ export default function CreateAdCampaignWizard() {
                                 >
                                   {xpostPosts.map(p => (
                                     <option key={p.id} value={p.id}>
-                                      {p.title || `Bài viết không tiêu đề (${p.id.substring(0, 8)})`}
+                                      {p.name || `Bài viết AI (${p.id.substring(0, 8)})`}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                             ) : (
                               <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-xs font-medium text-slate-500">
-                                ⚠️ Bạn chưa thiết kế bài viết nào. Hãy qua mục Bài viết để tạo bài.
+                                ⚠️ Bạn chưa sinh bài viết bằng Keyword AI nào.
                               </div>
                             )
-                          ) : (
-                            <select
-                              value={formData.adName}
-                              onChange={(e) => {
-                                const selectedName = e.target.value;
-                                const ad = existingAds.find(x => x.name === selectedName);
-                                if (ad) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    adName: ad.name,
-                                    title: ad.title,
-                                    bodyText: ad.bodyText,
-                                    mediaUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60'
-                                  }));
-                                }
-                              }}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 transition-all shadow-sm"
-                            >
-                              {existingAds.map(ad => (
-                                <option key={ad.id} value={ad.name}>
-                                  {ad.name}
-                                </option>
-                              ))}
-                            </select>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
 
-                    {/* Kho Mẫu Bài Viết Quảng Cáo Gợi Ý */}
-                    <div className="border border-blue-100 bg-blue-50/20 rounded-2xl p-4.5 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                          💡 Gợi Ý Mẫu Bài Viết Test Theo Ngành Hàng
-                        </span>
-                        <span className="text-[10px] text-blue-600 font-bold bg-blue-100/50 px-2 py-0.5 rounded-lg">
-                          Chọn nhanh mẫu
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                        {MOCK_CREATIVE_TEMPLATES.map((tpl, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => {
-                              setFormData(prev => ({
-                                ...prev,
-                                adName: tpl.adName,
-                                title: tpl.title,
-                                bodyText: tpl.bodyText,
-                                mediaUrl: tpl.mediaUrl,
-                                destinationUrl: tpl.destinationUrl,
-                                callToAction: tpl.callToAction
-                              }));
-                              setLocalPreview('');
-                              toast.success(`Đã áp dụng mẫu: ${tpl.category}`);
-                            }}
-                            className={`px-3 py-2 text-[10px] font-black rounded-xl border text-center transition-all ${formData.adName === tpl.adName
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                              }`}
-                          >
-                            {tpl.category}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
 
-                    {adMode === 'fb_post' && (
-                      <div className="bg-blue-55/10 border border-blue-200 rounded-2xl p-5 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0 border border-blue-200">
-                          <Info className="w-5 h-5 stroke-[2.5]" />
-                        </div>
-                        <div className="space-y-1.5 text-left">
-                          <h3 className="text-xs font-black text-blue-950 uppercase tracking-wide">Đang sử dụng bài viết Facebook Page có sẵn</h3>
-                          <p className="text-[11px] text-blue-800 leading-relaxed font-medium">
-                            Nội dung văn bản, hình ảnh, liên kết và nút kêu gọi hành động (CTA) sẽ được sử dụng trực tiếp từ bài viết gốc trên Facebook Page của bạn. Hệ thống đã khóa các trường chỉnh sửa dưới đây.
-                          </p>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Image source tabs & interactive upload zone */}
-                    {adMode !== 'fb_post' ? (
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hình ảnh quảng cáo sáng tạo</label>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hình ảnh quảng cáo sáng tạo</label>
 
-                        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+                      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+                        <button
+                          type="button"
+                          onClick={() => setMediaMode('upload')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mediaMode === 'upload' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                          📁 Tải lên từ máy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMediaMode('url')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mediaMode === 'url' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                          🔗 Dán đường dẫn URL
+                        </button>
+                      </div>
+
+                      {mediaMode === 'upload' && (
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+                          onDragLeave={() => setIsDragOver(false)}
+                          onDrop={handleDrop}
+                          className={`relative cursor-pointer border-2 border-dashed rounded-2xl transition-all duration-200 flex flex-col items-center justify-center gap-2.5 py-7 px-4 text-center select-none ${isDragOver
+                            ? 'border-blue-500 bg-blue-50/20 scale-[1.01]'
+                            : 'border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/5'
+                            }`}
+                        >
+                          <div className="text-3xl">{isDragOver ? '🎯' : '🖼️'}</div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">Kéo & thả ảnh ở đây hoặc click để duyệt file</p>
+                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">Hỗ trợ định dạng JPG, PNG, WEBP, GIF (Tối đa 10MB)</p>
+                          </div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUploadMedia}
+                            className="hidden"
+                          />
+                        </div>
+                      )}
+
+                      {mediaMode === 'url' && (
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            placeholder="Dán link ảnh vào đây... (https://...)"
+                            value={urlInput}
+                            onChange={e => setUrlInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleApplyImageUrl()}
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 font-mono"
+                          />
                           <button
                             type="button"
-                            onClick={() => setMediaMode('upload')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mediaMode === 'upload' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-700'
-                              }`}
+                            onClick={handleApplyImageUrl}
+                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-blue-500/10"
                           >
-                            📁 Tải lên từ máy
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMediaMode('url')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${mediaMode === 'url' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/40' : 'text-slate-500 hover:text-slate-700'
-                              }`}
-                          >
-                            🔗 Dán đường dẫn URL
+                            Áp dụng
                           </button>
                         </div>
+                      )}
 
-                        {mediaMode === 'upload' && (
-                          <div
-                            onClick={() => fileInputRef.current?.click()}
-                            onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-                            onDragLeave={() => setIsDragOver(false)}
-                            onDrop={handleDrop}
-                            className={`relative cursor-pointer border-2 border-dashed rounded-2xl transition-all duration-200 flex flex-col items-center justify-center gap-2.5 py-7 px-4 text-center select-none ${isDragOver
-                              ? 'border-blue-500 bg-blue-50/20 scale-[1.01]'
-                              : 'border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/5'
-                              }`}
-                          >
-                            <div className="text-3xl">{isDragOver ? '🎯' : '🖼️'}</div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-700">Kéo & thả ảnh ở đây hoặc click để duyệt file</p>
-                              <p className="text-[10px] text-slate-400 font-medium mt-0.5">Hỗ trợ định dạng JPG, PNG, WEBP, GIF (Tối đa 10MB)</p>
-                            </div>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/*"
-                              onChange={handleUploadMedia}
-                              className="hidden"
-                            />
-                          </div>
-                        )}
-
-                        {mediaMode === 'url' && (
-                          <div className="flex gap-2">
-                            <input
-                              type="url"
-                              placeholder="Dán link ảnh vào đây... (https://...)"
-                              value={urlInput}
-                              onChange={e => setUrlInput(e.target.value)}
-                              onKeyDown={e => e.key === 'Enter' && handleApplyImageUrl()}
-                              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 font-mono"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleApplyImageUrl}
-                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-blue-500/10"
-                            >
-                              Áp dụng
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Display image preview indicator */}
-                        {(formData.mediaUrl || localPreview) && (
-                          <div className="flex items-center gap-3 mt-2.5 p-2 bg-green-50 border border-green-200 rounded-2xl shadow-sm animate-in scale-in duration-200">
-                            <img
-                              src={localPreview || (formData.mediaUrl.startsWith('/') ? `${(api.defaults.baseURL || '').replace('/api', '')}${formData.mediaUrl}` : formData.mediaUrl)}
-                              alt=""
-                              className="w-12 h-12 object-cover rounded-xl border border-green-300 shrink-0 shadow-sm"
-                              onError={e => { (e.target as HTMLImageElement).src = ''; }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[11px] font-black text-green-800">✓ Hình ảnh đã áp dụng thành công</p>
-                              <p className="text-[9px] text-slate-400 truncate font-mono mt-0.5">{formData.mediaUrl}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData(prev => ({ ...prev, mediaUrl: '' }));
-                                setLocalPreview('');
-                                setUrlInput('');
-                                if (fileInputRef.current) fileInputRef.current.value = '';
-                              }}
-                              className="w-7 h-7 flex items-center justify-center hover:bg-red-500 text-slate-400 hover:text-white rounded-lg text-xs font-black transition-all"
-                              title="Xóa hình ảnh này"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      /* Display image preview indicator for Facebook Page Post */
-                      (formData.mediaUrl || localPreview) && (
-                        <div className="flex items-center gap-3 mt-2.5 p-2 bg-blue-50 border border-blue-200 rounded-2xl shadow-sm animate-in scale-in duration-200">
+                      {/* Display image preview indicator */}
+                      {(formData.mediaUrl || localPreview) && (
+                        <div className="flex items-center gap-3 mt-2.5 p-2 bg-green-50 border border-green-200 rounded-2xl shadow-sm animate-in scale-in duration-200">
                           <img
                             src={localPreview || (formData.mediaUrl.startsWith('/') ? `${(api.defaults.baseURL || '').replace('/api', '')}${formData.mediaUrl}` : formData.mediaUrl)}
                             alt=""
-                            className="w-12 h-12 object-cover rounded-xl border border-blue-300 shrink-0 shadow-sm"
+                            className="w-12 h-12 object-cover rounded-xl border border-green-300 shrink-0 shadow-sm"
                             onError={e => { (e.target as HTMLImageElement).src = ''; }}
                           />
-                          <div className="flex-1 min-w-0 text-left">
-                            <p className="text-[11px] font-black text-blue-800">📘 Ảnh từ bài viết Facebook gốc</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-black text-green-800">✓ Hình ảnh đã áp dụng thành công</p>
                             <p className="text-[9px] text-slate-400 truncate font-mono mt-0.5">{formData.mediaUrl}</p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, mediaUrl: '' }));
+                              setLocalPreview('');
+                              setUrlInput('');
+                              if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-red-500 text-slate-400 hover:text-white rounded-lg text-xs font-black transition-all"
+                            title="Xóa hình ảnh này"
+                          >
+                            ✕
+                          </button>
                         </div>
-                      )
-                    )}
+                      )}
+                    </div>
+
 
                     {/* CTA Button dropdown */}
                     <div className="space-y-1.5 text-left">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Nút kêu gọi hành động (Call To Action)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Nút kêu gọi hành động</label>
                       <select
                         name="callToAction"
                         value={formData.callToAction}
                         onChange={handleInputChange}
-                        disabled={adMode === 'fb_post'}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-600 disabled:opacity-75 disabled:cursor-not-allowed"
                       >
-                        <option value="LEARN_MORE">Tìm hiểu thêm (Learn More)</option>
-                        <option value="SHOP_NOW">Mua ngay (Shop Now)</option>
-                        <option value="SIGN_UP">Đăng ký (Sign Up)</option>
-                        <option value="CONTACT_US">Liên hệ ngay (Contact Us)</option>
+                        <option value="LEARN_MORE">Tìm hiểu thêm</option>
+                        <option value="SHOP_NOW">Mua ngay</option>
+                        <option value="SIGN_UP">Đăng ký</option>
+                        <option value="CONTACT_US">Liên hệ ngay</option>
                       </select>
                     </div>
 
                     {/* Headline text */}
                     <div className="space-y-1.5 text-left">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tiêu đề chính (Headline)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tiêu đề chính</label>
                       <input
                         type="text"
                         name="title"
                         value={formData.title}
                         onChange={handleInputChange}
-                        disabled={adMode === 'fb_post'}
                         placeholder="Ví dụ: Mua Sen Đá Mini Đẹp Chỉ 15K - Mua Ngay!"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all disabled:opacity-75 disabled:cursor-not-allowed"
                       />
@@ -2227,13 +2655,12 @@ export default function CreateAdCampaignWizard() {
 
                     {/* Primary Text Body Copy */}
                     <div className="space-y-1.5 text-left">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Văn bản mô tả chính (Body Copy)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Văn bản mô tả chính</label>
                       <textarea
                         name="bodyText"
                         rows={4}
                         value={formData.bodyText}
                         onChange={handleInputChange}
-                        disabled={adMode === 'fb_post'}
                         placeholder="Ví dụ: Cây cảnh để bàn giúp làm mát không khí, tăng hiệu suất làm việc 20%. Đặt hàng ngay bộ sưu tập sen đá mini đặc biệt..."
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all resize-none disabled:opacity-75 disabled:cursor-not-allowed"
                       />
@@ -2241,13 +2668,12 @@ export default function CreateAdCampaignWizard() {
 
                     {/* Destination URL */}
                     <div className="space-y-1.5 text-left">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Đường dẫn trang đích (Destination URL)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Đường dẫn trang đích</label>
                       <input
                         type="text"
                         name="destinationUrl"
                         value={formData.destinationUrl}
                         onChange={handleInputChange}
-                        disabled={adMode === 'fb_post'}
                         placeholder="Ví dụ: https://cuahangsenda.com/khuyenmai"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all font-mono disabled:opacity-75 disabled:cursor-not-allowed"
                       />
@@ -2260,65 +2686,97 @@ export default function CreateAdCampaignWizard() {
 
               {/* FOOTER WIZARD CONTROLS */}
               <div className="bg-slate-50 border-t border-slate-100 px-6 py-4.5 flex items-center justify-between">
-                {currentStep > 1 ? (
-                  <button
-                    type="button"
-                    onClick={handleBack}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-all shadow-sm"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Quay lại
-                  </button>
-                ) : (
-                  <div />
-                )}
-
-                {currentStep < (adMode === 'skip' ? 2 : 3) ? (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-black bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/10 transition-all ml-auto"
-                  >
-                    Tiếp tục
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <div className="flex gap-2.5 ml-auto">
-                    {/* Nút 1: Lưu bản nháp */}
+                {isEditMode ? (
+                  <>
                     <button
                       type="button"
-                      onClick={() => handleSubmit('DRAFT')}
+                      onClick={() => navigate('/facebook-ads')}
                       disabled={isSubmitting}
-                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-white border border-slate-200 text-slate-700 hover:bg-slate-55 rounded-xl transition-all shadow-sm"
                     >
-                      📁 Lưu Bản Nháp
+                      Hủy bỏ
                     </button>
-
-                    {/* Nút 2: Đồng bộ Facebook */}
                     <button
                       type="button"
-                      onClick={() => handleSubmit('PAUSED')}
+                      onClick={handleUpdateSubmit}
                       disabled={isSubmitting}
-                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-500/10 transition-all disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-black bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/10 transition-all ml-auto disabled:opacity-50"
                     >
-                      ☁️ Đồng bộ Facebook
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Đang đồng bộ...
+                        </>
+                      ) : (
+                        <>
+                          ☁️ Đồng bộ & Cập nhật
+                        </>
+                      )}
                     </button>
+                  </>
+                ) : (
+                  <>
+                    {currentStep > 1 ? (
+                      <button
+                        type="button"
+                        onClick={handleBack}
+                        disabled={isSubmitting}
+                        className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-all shadow-sm"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Quay lại
+                      </button>
+                    ) : (
+                      <div />
+                    )}
 
-                    {/* Nút 3: Phát hành Quảng cáo */}
-                    <button
-                      type="button"
-                      onClick={() => handleSubmit('ACTIVE')}
-                      disabled={isSubmitting || !hasPaymentMethod}
-                      className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-black text-white rounded-xl shadow-md transition-all ${!hasPaymentMethod
-                          ? 'bg-slate-300 cursor-not-allowed opacity-50 shadow-none'
-                          : 'bg-green-600 hover:bg-green-700 shadow-green-500/10'
-                        }`}
-                      title={!hasPaymentMethod ? 'Chưa cấu hình phương thức thanh toán trên Meta' : 'Phát hành và bắt đầu chạy quảng cáo'}
-                    >
-                      🚀 Phát Hành Quảng Cáo
-                    </button>
-                  </div>
+                    {currentStep < (adMode === 'skip' ? 2 : 3) ? (
+                      <button
+                        type="button"
+                        onClick={handleNext}
+                        className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-black bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/10 transition-all ml-auto"
+                      >
+                        Tiếp tục
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <div className="flex gap-2.5 ml-auto">
+                        {/* Nút 1: Lưu bản nháp */}
+                        <button
+                          type="button"
+                          onClick={() => handleSubmit('DRAFT')}
+                          disabled={isSubmitting}
+                          className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                        >
+                          📁 Lưu Bản Nháp
+                        </button>
+
+                        {/* Nút 2: Đồng bộ Facebook */}
+                        <button
+                          type="button"
+                          onClick={() => handleSubmit('PAUSED')}
+                          disabled={isSubmitting}
+                          className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-500/10 transition-all disabled:opacity-50"
+                        >
+                          ☁️ Đồng bộ Facebook
+                        </button>
+
+                        {/* Nút 3: Phát hành Quảng cáo */}
+                        <button
+                          type="button"
+                          onClick={() => handleSubmit('ACTIVE')}
+                          disabled={isSubmitting || !hasPaymentMethod}
+                          className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-black text-white rounded-xl shadow-md transition-all ${!hasPaymentMethod
+                            ? 'bg-slate-300 cursor-not-allowed opacity-50 shadow-none'
+                            : 'bg-green-600 hover:bg-green-700 shadow-green-500/10'
+                            }`}
+                          title={!hasPaymentMethod ? 'Chưa cấu hình phương thức thanh toán trên Meta' : 'Phát hành và bắt đầu chạy quảng cáo'}
+                        >
+                          🚀 Phát Hành Quảng Cáo
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -2329,7 +2787,7 @@ export default function CreateAdCampaignWizard() {
           <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-4">
             <div className="flex items-center gap-2 text-slate-400 px-1 select-none">
               <Smartphone className="w-4 h-4 shrink-0" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Bản xem trước di động (Sponsored Feed)</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Bản xem trước di động</span>
             </div>
 
             {/* SmartPhone mockup container */}
