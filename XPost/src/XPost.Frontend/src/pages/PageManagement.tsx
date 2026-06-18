@@ -114,6 +114,8 @@ export default function PageManagement() {
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [messageText, setMessageText] = useState('');
+    const [countdown, setCountdown] = useState<number>(0);
+    const [conversationsCountdowns, setConversationsCountdowns] = useState<Record<string, number>>({});
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -137,6 +139,34 @@ export default function PageManagement() {
     const [conversationOrders, setConversationOrders] = useState<any[]>([]);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [crmTab, setCrmTab] = useState<'orders' | 'complaints'>('orders');
+
+    useEffect(() => {
+        if (countdown <= 0) return;
+        const timer = setInterval(() => {
+            setCountdown(prev => Math.max(0, prev - 1));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [countdown]);
+
+    useEffect(() => {
+        const activeCountdowns = Object.keys(conversationsCountdowns).filter(id => conversationsCountdowns[id] > 0);
+        if (activeCountdowns.length === 0) return;
+
+        const timer = setInterval(() => {
+            setConversationsCountdowns(prev => {
+                const next = { ...prev };
+                let updated = false;
+                Object.keys(next).forEach(id => {
+                    if (next[id] > 0) {
+                        next[id] = Math.max(0, next[id] - 1);
+                        updated = true;
+                    }
+                });
+                return updated ? next : prev;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [conversationsCountdowns]);
 
     const parseSubButtons = (payloadStr: string): { title: string; url: string }[] => {
         if (!payloadStr) return [{ title: '', url: '' }];
@@ -805,6 +835,15 @@ export default function PageManagement() {
                         if (unreadB > 0 && unreadA === 0) return 1;
                         return new Date(b.updated_time).getTime() - new Date(a.updated_time).getTime();
                     });
+
+                    const countdowns: Record<string, number> = {};
+                    sorted.forEach((conv: any) => {
+                        if (conv.remainingPauseSeconds > 0) {
+                            countdowns[conv.id] = conv.remainingPauseSeconds;
+                        }
+                    });
+                    setConversationsCountdowns(prev => ({ ...prev, ...countdowns }));
+
                     setConversations(sorted);
                 }
             }
@@ -889,6 +928,14 @@ export default function PageManagement() {
                     })));
                 } else {
                     setMessages(msgs.reverse());
+                }
+                const remaining = res.data.remainingPauseSeconds || 0;
+                setCountdown(remaining);
+                if (selectedConversation) {
+                    setConversationsCountdowns(prev => ({
+                        ...prev,
+                        [selectedConversation.id]: remaining
+                    }));
                 }
             }
         } catch (err) {
@@ -1004,12 +1051,42 @@ export default function PageManagement() {
                 });
             }
 
+            setCountdown(300);
+            if (selectedConversation) {
+                setConversationsCountdowns(prev => ({
+                    ...prev,
+                    [selectedConversation.id]: 300
+                }));
+            }
             setMessageText('');
             setSelectedFile(null);
             setPreviewUrl(null);
             fetchMessages(selectedConversation.id);
         } catch (err) {
             toast.error('Lỗi khi gửi tin nhắn');
+        }
+    };
+
+    const handleToggleConversationBot = async () => {
+        if (!selectedConversation) return;
+        const isBotActive = countdown === 0;
+        const targetPausedState = isBotActive;
+
+        try {
+            const res = await api.post(`${apiPrefix}/${accountId}/conversations/${selectedConversation.id}/toggle-bot`, {
+                paused: targetPausedState
+            });
+            if (res.data && res.data.success) {
+                const newRemaining = targetPausedState ? -1 : 0;
+                setCountdown(newRemaining);
+                setConversationsCountdowns(prev => ({
+                    ...prev,
+                    [selectedConversation.id]: newRemaining
+                }));
+                toast.success(targetPausedState ? 'Đã tắt chatbot cho hội thoại này' : 'Đã bật lại chatbot cho hội thoại này');
+            }
+        } catch (err) {
+            toast.error('Lỗi khi cập nhật trạng thái chatbot');
         }
     };
 
@@ -1292,13 +1369,24 @@ export default function PageManagement() {
                                     >
                                         <div className="flex items-center justify-between">
                                             <p className={`text-sm font-bold truncate ${unreadCount > 0 && !isSelected ? 'text-orange-900' : 'text-gray-900'}`}>{names}</p>
-                                            {unreadCount > 0 ? (
-                                                <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shadow-sm">
-                                                    {unreadCount} tin mới
-                                                </span>
-                                            ) : (
-                                                conv.messages?.data && conv.messages.data.length > 0 && <span title="Đã phản hồi"><CheckCircle className="w-4 h-4 text-gray-300" /></span>
-                                            )}
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {conversationsCountdowns[conv.id] === -1 ? (
+                                                    <span className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap border border-red-200 flex items-center gap-0.5">
+                                                        📴 Bot tắt
+                                                    </span>
+                                                ) : conversationsCountdowns[conv.id] > 0 ? (
+                                                    <span className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap border border-orange-200 animate-pulse flex items-center gap-0.5">
+                                                        ⏸️ {conversationsCountdowns[conv.id]}s
+                                                    </span>
+                                                ) : null}
+                                                {unreadCount > 0 ? (
+                                                    <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shadow-sm">
+                                                        {unreadCount} tin mới
+                                                    </span>
+                                                ) : (
+                                                    conv.messages?.data && conv.messages.data.length > 0 && <span title="Đã phản hồi"><CheckCircle className="w-4 h-4 text-gray-300" /></span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex justify-between items-center mt-1.5 text-xs text-gray-500">
                                             <span className="truncate max-w-[120px] text-gray-400">
@@ -1333,16 +1421,46 @@ export default function PageManagement() {
                         {selectedConversation ? (
                             <>
                                 <div className="p-4 border-b bg-white font-bold text-sm text-gray-800 flex justify-between items-center shrink-0 shadow-sm z-10">
-                                    <span className="truncate max-w-[70%]">
-                                        {selectedConversation.userDisplayName || selectedConversation.participants?.data?.filter(p => p.id !== pageId).map(p => p.name || p.username || 'Người dùng Facebook').join(', ')}
+                                    <span className="truncate max-w-[50%] flex items-center gap-2">
+                                        <span className="truncate">{selectedConversation.userDisplayName || selectedConversation.participants?.data?.filter(p => p.id !== pageId).map(p => p.name || p.username || 'Người dùng Facebook').join(', ')}</span>
+                                        {countdown === -1 ? (
+                                            <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium border border-red-200 flex items-center gap-1 shrink-0">
+                                                <span className="relative flex h-1.5 w-1.5">
+                                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                                                </span>
+                                                Bot đã tắt
+                                            </span>
+                                        ) : countdown > 0 ? (
+                                            <span className="bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full font-medium border border-orange-200 animate-pulse flex items-center gap-1 shrink-0">
+                                                <span className="relative flex h-1.5 w-1.5">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-500"></span>
+                                                </span>
+                                                Bot tạm ngưng {countdown}s
+                                            </span>
+                                        ) : null}
                                     </span>
-                                    <button
-                                        onClick={() => handleDeleteConversation(selectedConversation.id)}
-                                        className="px-2.5 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1 border border-red-100 shadow-sm shrink-0"
-                                        title="Xóa cuộc trò chuyện"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" /> Xóa chat
-                                    </button>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        {!isZalo && !isTikTok && (
+                                            <div className="flex items-center gap-1.5 bg-slate-50 border px-2.5 py-1 rounded-lg">
+                                                <span className="text-[11px] text-gray-500 font-semibold">Tự động trả lời:</span>
+                                                <button
+                                                    onClick={handleToggleConversationBot}
+                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${countdown === -1 || countdown > 0 ? 'bg-slate-200' : 'bg-emerald-500'}`}
+                                                    title={countdown === -1 ? 'Chatbot đang tắt' : countdown > 0 ? 'Chatbot đang tạm ngưng (bấm để bật lại)' : 'Chatbot đang bật'}
+                                                >
+                                                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${countdown === -1 || countdown > 0 ? 'translate-x-1' : 'translate-x-4.5'}`} />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => handleDeleteConversation(selectedConversation.id)}
+                                            className="px-2.5 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1 border border-red-100 shadow-sm shrink-0"
+                                            title="Xóa cuộc trò chuyện"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" /> Xóa chat
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {messages.map(msg => {
@@ -1384,6 +1502,41 @@ export default function PageManagement() {
                                     })}
                                 </div>
                                 <div className="p-3 bg-white border-t flex flex-col gap-2">
+                                    {countdown === -1 ? (
+                                        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-1.5 rounded-lg flex items-center justify-between font-medium ml-12 mr-1">
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="relative flex h-2 w-2">
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                </span>
+                                                🤖 Chatbot đã tắt cho cuộc trò chuyện này
+                                            </span>
+                                            <button 
+                                                onClick={handleToggleConversationBot}
+                                                className="text-red-800 underline font-bold hover:text-red-900"
+                                            >
+                                                Bật lại
+                                            </button>
+                                        </div>
+                                    ) : countdown > 0 ? (
+                                        <div className="bg-orange-50 border border-orange-200 text-orange-700 text-xs px-3 py-1.5 rounded-lg flex items-center justify-between font-medium animate-pulse ml-12 mr-1">
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="relative flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                                                </span>
+                                                🤖 Chatbot đang tạm ngưng (Nhân viên đang nhắn tin)
+                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <span>Bật lại sau {countdown}s</span>
+                                                <button 
+                                                    onClick={handleToggleConversationBot}
+                                                    className="text-orange-800 underline font-bold hover:text-orange-900"
+                                                >
+                                                    Bật lại ngay
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
                                     {previewUrl && (
                                         <div className="relative w-24 h-24 border rounded-xl overflow-hidden bg-gray-100 self-start ml-12">
                                             {selectedFile?.type.startsWith('video/') ? (

@@ -359,7 +359,9 @@ public class PageManagementController : ControllerBase
     }
 
     [HttpGet("{accountId}/conversations")]
-    public async Task<IActionResult> GetConversations(Guid accountId)
+    public async Task<IActionResult> GetConversations(
+        Guid accountId,
+        [FromServices] ApplicationDbContext db)
     {
         try
         {
@@ -449,6 +451,89 @@ public class PageManagementController : ControllerBase
                         idVal != null && 
                         !hiddenIds.Contains(idVal.ToString() ?? "")
                     ).ToList();
+
+                    try
+                    {
+                        var chatbot = await db.Chatbots
+                            .IgnoreQueryFilters()
+                            .FirstOrDefaultAsync(c => c.MessengerPageId == account.AccountIdentifier && c.IsActive);
+
+                        if (chatbot != null)
+                        {
+                            foreach (var conv in conversationsList)
+                            {
+                                int remainingPauseSeconds = 0;
+                                if (conv.TryGetValue("participants", out var participantsObj) && participantsObj is JsonElement participantsElement)
+                                {
+                                    if (participantsElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                                    {
+                                        string? userPsid = null;
+                                        foreach (var part in dataProp.EnumerateArray())
+                                        {
+                                            if (part.TryGetProperty("id", out var idProp))
+                                            {
+                                                var partId = idProp.GetString();
+                                                if (partId != account.AccountIdentifier)
+                                                {
+                                                    userPsid = partId;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        if (!string.IsNullOrEmpty(userPsid))
+                                        {
+                                            var session = await db.ChatbotSessions
+                                                .IgnoreQueryFilters()
+                                                .FirstOrDefaultAsync(s => s.ChatbotId == chatbot.Id && s.Psid == userPsid && s.IsActive);
+
+                                            if (session != null)
+                                            {
+                                                var lastManualAction = await db.ChatbotMessages
+                                                    .IgnoreQueryFilters()
+                                                    .Where(m => m.SessionId == session.Id && (m.Text == "[BOT_PAUSED_MANUALLY]" || m.Text == "[BOT_RESUMED_MANUALLY]"))
+                                                    .OrderByDescending(m => m.SentAtUtc)
+                                                    .FirstOrDefaultAsync();
+
+                                                if (lastManualAction != null && lastManualAction.Text == "[BOT_PAUSED_MANUALLY]")
+                                                {
+                                                    remainingPauseSeconds = -1;
+                                                }
+                                                else
+                                                {
+                                                    var lastResumeAction = lastManualAction != null && lastManualAction.Text == "[BOT_RESUMED_MANUALLY]" ? lastManualAction : null;
+                                                    var filterStartTime = lastResumeAction != null ? lastResumeAction.SentAtUtc : DateTime.MinValue;
+                                                    var thirtySecondsAgo = DateTime.UtcNow.AddSeconds(-300);
+                                                    if (thirtySecondsAgo < filterStartTime)
+                                                    {
+                                                        thirtySecondsAgo = filterStartTime;
+                                                    }
+
+                                                    var lastStaffMessage = await db.ChatbotMessages
+                                                        .IgnoreQueryFilters()
+                                                        .Where(m => m.SessionId == session.Id && m.Mid.StartsWith("staff_") && m.SentAtUtc >= thirtySecondsAgo)
+                                                        .OrderByDescending(m => m.SentAtUtc)
+                                                        .FirstOrDefaultAsync();
+
+                                                    if (lastStaffMessage != null)
+                                                    {
+                                                        var elapsedSeconds = (DateTime.UtcNow - lastStaffMessage.SentAtUtc).TotalSeconds;
+                                                        remainingPauseSeconds = (int)Math.Max(0, 300 - elapsedSeconds);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                conv["remainingPauseSeconds"] = remainingPauseSeconds;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ERROR] GetConversations - Failed to compute remainingPauseSeconds: {ex.Message}");
+                    }
+
                     result.Add("data", conversationsList);
                 }
                 else
@@ -483,7 +568,10 @@ public class PageManagementController : ControllerBase
     }
 
     [HttpGet("{accountId}/conversations/{convId}/messages")]
-    public async Task<IActionResult> GetMessages(Guid accountId, string convId)
+    public async Task<IActionResult> GetMessages(
+        Guid accountId, 
+        string convId,
+        [FromServices] ApplicationDbContext db)
     {
         try
         {
@@ -609,10 +697,84 @@ public class PageManagementController : ControllerBase
                     processedMessages.Add(msgDict);
                 }
 
+                // Compute remainingPauseSeconds
+                int remainingPauseSeconds = 0;
+                try
+                {
+                    var chatbot = await db.Chatbots
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(c => c.MessengerPageId == account.AccountIdentifier && c.IsActive);
+
+                    if (chatbot != null)
+                    {
+                        string? userPsid = null;
+                        foreach (var m in messagesData.EnumerateArray())
+                        {
+                            if (m.TryGetProperty("from", out var fromProp) && fromProp.TryGetProperty("id", out var idProp))
+                            {
+                                var fromId = idProp.GetString();
+                                if (fromId != account.AccountIdentifier)
+                                {
+                                    userPsid = fromId;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(userPsid))
+                        {
+                            var session = await db.ChatbotSessions
+                                .IgnoreQueryFilters()
+                                .FirstOrDefaultAsync(s => s.ChatbotId == chatbot.Id && s.Psid == userPsid && s.IsActive);
+
+                            if (session != null)
+                            {
+                                var lastManualAction = await db.ChatbotMessages
+                                    .IgnoreQueryFilters()
+                                    .Where(m => m.SessionId == session.Id && (m.Text == "[BOT_PAUSED_MANUALLY]" || m.Text == "[BOT_RESUMED_MANUALLY]"))
+                                    .OrderByDescending(m => m.SentAtUtc)
+                                    .FirstOrDefaultAsync();
+
+                                if (lastManualAction != null && lastManualAction.Text == "[BOT_PAUSED_MANUALLY]")
+                                {
+                                    remainingPauseSeconds = -1;
+                                }
+                                else
+                                {
+                                    var lastResumeAction = lastManualAction != null && lastManualAction.Text == "[BOT_RESUMED_MANUALLY]" ? lastManualAction : null;
+                                    var filterStartTime = lastResumeAction != null ? lastResumeAction.SentAtUtc : DateTime.MinValue;
+                                    var thirtySecondsAgo = DateTime.UtcNow.AddSeconds(-300);
+                                    if (thirtySecondsAgo < filterStartTime)
+                                    {
+                                        thirtySecondsAgo = filterStartTime;
+                                    }
+
+                                    var lastStaffMessage = await db.ChatbotMessages
+                                        .IgnoreQueryFilters()
+                                        .Where(m => m.SessionId == session.Id && m.Mid.StartsWith("staff_") && m.SentAtUtc >= thirtySecondsAgo)
+                                        .OrderByDescending(m => m.SentAtUtc)
+                                        .FirstOrDefaultAsync();
+
+                                    if (lastStaffMessage != null)
+                                    {
+                                        var elapsedSeconds = (DateTime.UtcNow - lastStaffMessage.SentAtUtc).TotalSeconds;
+                                        remainingPauseSeconds = (int)Math.Max(0, 300 - elapsedSeconds);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] GetMessages - Failed to compute remainingPauseSeconds: {ex.Message}");
+                }
+
                 var result = new Dictionary<string, object>
                 {
                     { "id", root.GetProperty("id").GetString()! },
-                    { "messages", new { data = processedMessages } }
+                    { "messages", new { data = processedMessages } },
+                    { "remainingPauseSeconds", remainingPauseSeconds }
                 };
 
                 return Ok(result);
@@ -644,7 +806,10 @@ public class PageManagementController : ControllerBase
     }
 
     [HttpPost("{accountId}/messages/send")]
-    public async Task<IActionResult> SendMessage(Guid accountId, [FromBody] SendMessageRequest request)
+    public async Task<IActionResult> SendMessage(
+        Guid accountId, 
+        [FromBody] SendMessageRequest request,
+        [FromServices] ApplicationDbContext db)
     {
         var account = await GetValidAccount(accountId);
         if (account == null) return NotFound();
@@ -691,6 +856,46 @@ public class PageManagementController : ControllerBase
         var respString = await response.Content.ReadAsStringAsync();
         
         int code = (int)response.StatusCode;
+        if (response.IsSuccessStatusCode)
+        {
+            try
+            {
+                var chatbot = await db.Chatbots
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(c => c.MessengerPageId == account.AccountIdentifier && c.IsActive);
+
+                if (chatbot != null)
+                {
+                    var session = await db.ChatbotSessions
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(s => s.ChatbotId == chatbot.Id && s.Psid == request.RecipientId && s.IsActive);
+
+                    if (session != null)
+                    {
+                        var staffMsg = new ChatbotMessage
+                        {
+                            TenantId = chatbot.TenantId,
+                            SessionId = session.Id,
+                            Mid = $"staff_ui_{Guid.NewGuid():N}",
+                            SenderId = account.AccountIdentifier ?? "",
+                            RecipientId = request.RecipientId,
+                            Text = request.Message ?? (!string.IsNullOrEmpty(request.MediaUrl) ? "[Media đính kèm]" : "[Tin nhắn trống]"),
+                            IsFromUser = false,
+                            SentAtUtc = DateTime.UtcNow
+                        };
+                        db.ChatbotMessages.Add(staffMsg);
+
+                        session.LastInteractionAtUtc = DateTime.UtcNow;
+                        session.UpdatedAt = DateTime.UtcNow;
+                        await db.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to log staff message: {ex.Message}");
+            }
+        }
         return StatusCode(code == 401 || code == 403 ? 400 : code, respString);
     }
 
@@ -1288,5 +1493,109 @@ public class PageManagementController : ControllerBase
             Console.WriteLine($"Error parsing KnowledgeBase buttons JSON: {ex.Message}");
         }
         return result;
+    }
+
+    public class ToggleChatbotRequest
+    {
+        public bool Paused { get; set; }
+    }
+
+    [HttpPost("{accountId}/conversations/{convId}/toggle-bot")]
+    public async Task<IActionResult> ToggleChatbot(
+        Guid accountId,
+        string convId,
+        [FromBody] ToggleChatbotRequest request,
+        [FromServices] ApplicationDbContext db)
+    {
+        try
+        {
+            var account = await GetValidAccount(accountId);
+            if (account == null) return NotFound();
+
+            var client = _httpClientFactory.CreateClient();
+            var url = $"{_graphApiBase}/{convId}?fields=participants&access_token={account.AccessToken}";
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                return BadRequest(new { error = "Failed to fetch conversation details from Facebook Graph API" });
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+
+            string? userPsid = null;
+            if (root.TryGetProperty("participants", out var participantsObj) && participantsObj.TryGetProperty("data", out var dataProp))
+            {
+                foreach (var part in dataProp.EnumerateArray())
+                {
+                    if (part.TryGetProperty("id", out var idProp))
+                    {
+                        var partId = idProp.GetString();
+                        if (partId != account.AccountIdentifier)
+                        {
+                            userPsid = partId;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(userPsid))
+            {
+                return BadRequest(new { error = "Could not find recipient PSID in this conversation" });
+            }
+
+            var chatbot = await db.Chatbots
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.MessengerPageId == account.AccountIdentifier && c.IsActive);
+
+            if (chatbot == null)
+            {
+                return BadRequest(new { error = "No active chatbot configured for this page" });
+            }
+
+            var session = await db.ChatbotSessions
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.ChatbotId == chatbot.Id && s.Psid == userPsid && s.IsActive);
+
+            if (session == null)
+            {
+                session = new ChatbotSession
+                {
+                    TenantId = chatbot.TenantId,
+                    ChatbotId = chatbot.Id,
+                    Psid = userPsid,
+                    LastInteractionAtUtc = DateTime.UtcNow,
+                    IsActive = true
+                };
+                db.ChatbotSessions.Add(session);
+                await db.SaveChangesAsync();
+            }
+
+            var manualMsg = new ChatbotMessage
+            {
+                TenantId = chatbot.TenantId,
+                SessionId = session.Id,
+                Mid = $"staff_manual_{(request.Paused ? "pause" : "resume")}_{Guid.NewGuid():N}",
+                SenderId = account.AccountIdentifier ?? "",
+                RecipientId = userPsid,
+                Text = request.Paused ? "[BOT_PAUSED_MANUALLY]" : "[BOT_RESUMED_MANUALLY]",
+                IsFromUser = false,
+                SentAtUtc = DateTime.UtcNow
+            };
+            db.ChatbotMessages.Add(manualMsg);
+            
+            session.LastInteractionAtUtc = DateTime.UtcNow;
+            session.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            return Ok(new { success = true, paused = request.Paused });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] ToggleChatbot Exception: {ex.Message}");
+            return StatusCode(500, new { error = "Internal server error in ToggleChatbot", details = ex.Message });
+        }
     }
 }

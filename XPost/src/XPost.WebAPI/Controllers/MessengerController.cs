@@ -557,8 +557,17 @@ public class MessengerController : ControllerBase
             var senderPsid = msgEvent.Sender?.Id;
             var recipientId = msgEvent.Recipient?.Id;
 
+            if (msgEvent.Message?.IsEcho == true)
+            {
+                var userPsid = msgEvent.Recipient?.Id; // For echoes, recipient is the user
+                if (!string.IsNullOrEmpty(userPsid))
+                {
+                    await HandleEchoAsync(chatbot, userPsid, msgEvent.Message, msgEvent.Timestamp, ct);
+                }
+                return;
+            }
+
             if (string.IsNullOrEmpty(senderPsid)) return;
-            if (msgEvent.Message?.IsEcho == true) return;
 
             if (msgEvent.Postback is { } postback)
             {
@@ -600,11 +609,6 @@ public class MessengerController : ControllerBase
             DateTime timestamp,
             CancellationToken ct)
         {
-            // 1. Immediately trigger read receipt ("mark_seen") and typing indicator ("typing_on") in parallel
-            var markSeenTask = _messengerService.SendReadReceiptAsync(pageToken, senderPsid, ct);
-            var typingTask = _messengerService.SendTypingAsync(pageToken, senderPsid, ct);
-
-            // 2. Perform DB check for duplication concurrently
             var alreadyProcessed = await _dbContext.ChatbotMessages
                 .IgnoreQueryFilters()
                 .AnyAsync(m => m.Mid == mid, ct);
@@ -612,13 +616,92 @@ public class MessengerController : ControllerBase
             if (alreadyProcessed)
             {
                 _logger.LogDebug("Duplicate Messenger message ignored: {Mid}", mid);
-                await Task.WhenAll(markSeenTask, typingTask);
                 return;
             }
 
             var session = await GetOrCreateSessionByPsidAsync(chatbot, pageToken, senderPsid, ct);
 
-            var inboundMsg = new ChatbotMessage
+            // Check if chatbot is manually paused for this customer
+            var lastManualAction = await _dbContext.ChatbotMessages
+                .IgnoreQueryFilters()
+                .Where(m => m.SessionId == session.Id && (m.Text == "[BOT_PAUSED_MANUALLY]" || m.Text == "[BOT_RESUMED_MANUALLY]"))
+                .OrderByDescending(m => m.SentAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            bool isManuallyPaused = lastManualAction != null && lastManualAction.Text == "[BOT_PAUSED_MANUALLY]";
+
+            if (isManuallyPaused)
+            {
+                _logger.LogInformation("Chatbot is permanently paused for session {SessionId} due to manual staff setting.", session.Id);
+                var inboundMsg = new ChatbotMessage
+                {
+                    TenantId = chatbot.TenantId,
+                    SessionId = session.Id,
+                    Mid = mid,
+                    SenderId = senderPsid,
+                    RecipientId = recipientId,
+                    Text = text,
+                    IsFromUser = true,
+                    SentAtUtc = timestamp
+                };
+                _dbContext.ChatbotMessages.Add(inboundMsg);
+                session.LastInteractionAtUtc = timestamp;
+                await _dbContext.SaveChangesAsync(ct);
+                return;
+            }
+
+            // Check if chatbot should be paused because staff recently messaged
+            var lastResumeAction = lastManualAction != null && lastManualAction.Text == "[BOT_RESUMED_MANUALLY]" ? lastManualAction : null;
+            var filterStartTime = lastResumeAction != null ? lastResumeAction.SentAtUtc : DateTime.MinValue;
+            var thirtySecondsAgo = DateTime.UtcNow.AddSeconds(-300);
+            if (thirtySecondsAgo < filterStartTime)
+            {
+                thirtySecondsAgo = filterStartTime;
+            }
+
+            var hasStaffRecentlyMessaged = await _dbContext.ChatbotMessages
+                .IgnoreQueryFilters()
+                .AnyAsync(m => m.SessionId == session.Id && m.Mid.StartsWith("staff_") && m.SentAtUtc >= thirtySecondsAgo, ct);
+
+            if (hasStaffRecentlyMessaged)
+            {
+                _logger.LogInformation("Chatbot paused for session {SessionId} due to recent staff activity.", session.Id);
+                var inboundMsg = new ChatbotMessage
+                {
+                    TenantId = chatbot.TenantId,
+                    SessionId = session.Id,
+                    Mid = mid,
+                    SenderId = senderPsid,
+                    RecipientId = recipientId,
+                    Text = text,
+                    IsFromUser = true,
+                    SentAtUtc = timestamp
+                };
+                _dbContext.ChatbotMessages.Add(inboundMsg);
+                session.LastInteractionAtUtc = timestamp;
+                session.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(ct);
+
+                await _hubContext.Clients.All.SendAsync("ReceiveMessengerEvent", new
+                {
+                    chatbotId = chatbot.Id,
+                    sessionId = session.Id,
+                    psid = senderPsid,
+                    customerName = session.CustomerName,
+                    customerAvatarUrl = session.CustomerAvatarUrl,
+                    message = text,
+                    isFromUser = true,
+                    timestamp = timestamp.ToString("o"),
+                    tenantId = chatbot.TenantId
+                }, ct);
+                return;
+            }
+
+            // 1. Immediately trigger read receipt ("mark_seen") and typing indicator ("typing_on") in parallel
+            var markSeenTask = _messengerService.SendReadReceiptAsync(pageToken, senderPsid, ct);
+            var typingTask = _messengerService.SendTypingAsync(pageToken, senderPsid, ct);
+
+            var inboundMsgNormal = new ChatbotMessage
             {
                 TenantId = chatbot.TenantId,
                 SessionId = session.Id,
@@ -629,7 +712,7 @@ public class MessengerController : ControllerBase
                 IsFromUser = true,
                 SentAtUtc = timestamp
             };
-            _dbContext.ChatbotMessages.Add(inboundMsg);
+            _dbContext.ChatbotMessages.Add(inboundMsgNormal);
 
             session.LastInteractionAtUtc = timestamp;
             session.UpdatedAt = DateTime.UtcNow;
@@ -688,13 +771,25 @@ public class MessengerController : ControllerBase
                                         var prompt = $"Khách hàng vừa hỏi về: '{qText}'. Hãy đóng vai nhân viên tư vấn, viết MỘT CÂU DUY NHẤT thật ngắn gọn, thân thiện (có thưa gửi Dạ/Vâng) để mời khách hàng nhấn vào nút '{btnName}' bên dưới để xem chi tiết. Tuyệt đối không trả lời dài dòng.";
                                         aiReply = await GenerateAiReplyAsync(chatbot, session, text, prompt, ct);
                                         var buttons = ParseButtons(chatbot.KnowledgeBase);
-                                        await _messengerService.SendUrlButtonAsync(pageToken, senderPsid, aiReply, btnName, btnUrl, buttons, ct);
+                                        if (aiReply == "[OUT_OF_SCOPE]")
+                                        {
+                                            aiReply = "Dạ, em là trợ lý ảo của Mạng Xuyên Việt. Em chỉ hỗ trợ giải đáp các thông tin liên quan đến dịch vụ và thiết bị mạng của công ty thôi ạ. Anh/chị thông cảm giúp em nhé! 😊";
+                                            await _messengerService.SendTextWithQuickRepliesAsync(pageToken, senderPsid, aiReply, buttons, ct);
+                                        }
+                                        else
+                                        {
+                                            await _messengerService.SendUrlButtonAsync(pageToken, senderPsid, aiReply, btnName, btnUrl, buttons, ct);
+                                        }
                                         _logger.LogInformation("Sent URL button response for icebreaker.");
                                     }
                                     else
                                     {
                                         var prompt = string.IsNullOrWhiteSpace(replyText) ? null : $"Đây là thông tin chính thức:\n{replyText}\n\nHãy dựa CHÍNH XÁC vào thông tin trên để trả lời câu hỏi '{qText}'. TUYỆT ĐỐI KHÔNG được bịa đặt hoặc tự sáng tạo thêm thông tin không có trong tài liệu này.";
                                         aiReply = await GenerateAiReplyAsync(chatbot, session, text, prompt, ct);
+                                        if (aiReply == "[OUT_OF_SCOPE]")
+                                        {
+                                            aiReply = "Dạ, em là trợ lý ảo của Mạng Xuyên Việt. Em chỉ hỗ trợ giải đáp các thông tin liên quan đến dịch vụ và thiết bị mạng của công ty thôi ạ. Anh/chị thông cảm giúp em nhé! 😊";
+                                        }
                                         var buttons = ParseButtons(chatbot.KnowledgeBase);
                                         await _messengerService.SendTextWithQuickRepliesAsync(pageToken, senderPsid, aiReply, buttons, ct);
                                     }
@@ -715,6 +810,10 @@ public class MessengerController : ControllerBase
             if (!isHandledByIceBreaker)
             {
                 aiReply = await GenerateAiReplyAsync(chatbot, session, text, null, ct);
+                if (aiReply == "[OUT_OF_SCOPE]")
+                {
+                    aiReply = "Dạ, em là trợ lý ảo của Mạng Xuyên Việt. Em chỉ hỗ trợ giải đáp các thông tin liên quan đến dịch vụ và thiết bị mạng của công ty thôi ạ. Anh/chị thông cảm giúp em nhé! 😊";
+                }
                 var buttons = ParseButtons(chatbot.KnowledgeBase);
                 await _messengerService.SendTextWithQuickRepliesAsync(pageToken, senderPsid, aiReply, buttons, ct);
             }
@@ -1304,10 +1403,14 @@ public class MessengerController : ControllerBase
                     .OrderBy(m => m.SentAtUtc)
                     .ToListAsync(ct);
 
+                // Load prompt from file
+                var filePrompt = await LoadXuyenVietPromptAsync();
                 var basePrompt = string.IsNullOrWhiteSpace(customSystemPrompt)
-                    ? (string.IsNullOrWhiteSpace(chatbot.KnowledgeBase)
-                        ? "Bạn là CSKH. Trả lời ngắn gọn, tự nhiên như người thật."
-                        : chatbot.KnowledgeBase)
+                    ? (!string.IsNullOrWhiteSpace(filePrompt)
+                        ? filePrompt
+                        : (string.IsNullOrWhiteSpace(chatbot.KnowledgeBase)
+                            ? "Bạn là CSKH. Trả lời ngắn gọn, tự nhiên như người thật."
+                            : chatbot.KnowledgeBase))
                     : customSystemPrompt;
 
                 // Optimize prompt length to save tokens
@@ -1315,7 +1418,10 @@ public class MessengerController : ControllerBase
                     "[QUY TẮC BẮT BUỘC]\n" +
                     "- Bạn là NV tư vấn (xưng 'em/mình', gọi khách là 'anh/chị/bạn'). Tuyệt đối KHÔNG nhận là AI/Bot.\n" +
                     "- Trả lời cực ngắn gọn, đi thẳng vấn đề. Dùng từ đệm thân thiện (dạ, ạ, nhé).\n" +
-                    "- Chat tự nhiên, không viết dài dòng hay chia mục lục.";
+                    "- Chat tự nhiên, không viết dài dòng hay chia mục lục.\n\n" +
+                    "[QUY TẮC PHẠM VI HỖ TRỢ]\n" +
+                    "- Chỉ trả lời các câu hỏi liên quan đến Công ty TNHH Công Nghệ Mạng Xuyên Việt, hạ tầng mạng, thiết bị mạng, dịch vụ bảo trì CNTT của công ty.\n" +
+                    "- Nếu khách hàng hỏi những câu hỏi ngoài phạm vi (ví dụ: giải toán học, đố vui, thơ ca, viết code, lập trình ứng dụng khác...), bạn BẮT BUỘC phải trả lời chính xác chuỗi: `[OUT_OF_SCOPE]`. Tuyệt đối không giải đáp các câu hỏi ngoài lề này.";
 
                 var contextBuilder = new StringBuilder();
                 foreach (var msg in history)
@@ -1382,6 +1488,11 @@ public class MessengerController : ControllerBase
                         await _dbContext.SaveChangesAsync(ct);
                     }
 
+                    if (aiText != null && aiText.Contains("[OUT_OF_SCOPE]"))
+                    {
+                        return "[OUT_OF_SCOPE]";
+                    }
+
                     return aiText ?? "Xin lỗi, tôi không hiểu yêu cầu của bạn. Bạn có thể nói lại không? 😊";
                 }
                 else
@@ -1427,6 +1538,11 @@ public class MessengerController : ControllerBase
                         await _dbContext.SaveChangesAsync(ct);
                     }
 
+                    if (aiText != null && aiText.Contains("[OUT_OF_SCOPE]"))
+                    {
+                        return "[OUT_OF_SCOPE]";
+                    }
+
                     return aiText ?? "Xin lỗi, tôi không hiểu yêu cầu của bạn. Bạn có thể nói lại không? 😊";
                 }
             }
@@ -1464,6 +1580,89 @@ public class MessengerController : ControllerBase
                 _logger.LogError(ex, "Error parsing KnowledgeBase buttons JSON for quick replies");
             }
             return result;
+        }
+
+        private async Task HandleEchoAsync(
+            Chatbot chatbot,
+            string userPsid,
+            MessengerMessageDto msg,
+            long timestampMs,
+            CancellationToken ct)
+        {
+            var mid = msg.Mid;
+            var text = msg.Text;
+            if (string.IsNullOrEmpty(mid)) return;
+
+            var session = await GetOrCreateSessionByPsidAsync(chatbot, chatbot.MessengerPageToken ?? "", userPsid, ct);
+
+            var fifteenSecondsAgo = DateTime.UtcNow.AddSeconds(-15);
+            var alreadyLogged = await _dbContext.ChatbotMessages
+                .IgnoreQueryFilters()
+                .AnyAsync(m => m.SessionId == session.Id && 
+                               (m.Mid == mid || m.Mid == "staff_" + mid || m.Mid.StartsWith("staff_ui_") ||
+                                (!m.IsFromUser && m.Text == text && m.SentAtUtc >= fifteenSecondsAgo)), ct);
+
+            if (alreadyLogged) return;
+
+            var sentTime = DateTimeOffset.FromUnixTimeMilliseconds(timestampMs).UtcDateTime;
+            var staffMsg = new ChatbotMessage
+            {
+                TenantId = chatbot.TenantId,
+                SessionId = session.Id,
+                Mid = "staff_" + mid,
+                SenderId = chatbot.MessengerPageId ?? "",
+                RecipientId = userPsid,
+                Text = text ?? "[Tin nhắn đính kèm]",
+                IsFromUser = false,
+                SentAtUtc = sentTime
+            };
+            _dbContext.ChatbotMessages.Add(staffMsg);
+
+            session.LastInteractionAtUtc = DateTime.UtcNow;
+            session.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(ct);
+
+            await _hubContext.Clients.All.SendAsync("ReceiveMessengerEvent", new
+            {
+                chatbotId = chatbot.Id,
+                sessionId = session.Id,
+                psid = userPsid,
+                customerName = session.CustomerName,
+                customerAvatarUrl = session.CustomerAvatarUrl,
+                message = text ?? "[Tin nhắn đính kèm]",
+                isFromUser = false,
+                timestamp = sentTime.ToString("o"),
+                tenantId = chatbot.TenantId
+            }, ct);
+        }
+
+        private async Task<string?> LoadXuyenVietPromptAsync()
+        {
+            var possiblePaths = new[]
+            {
+                System.IO.Path.Combine(AppContext.BaseDirectory, "docs", "Prompt_Tu_Van_Xuyen_Viet_Network.txt"),
+                System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "docs", "Prompt_Tu_Van_Xuyen_Viet_Network.txt"),
+                System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "..", "docs", "Prompt_Tu_Van_Xuyen_Viet_Network.txt"),
+                System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "..", "..", "docs", "Prompt_Tu_Van_Xuyen_Viet_Network.txt"),
+                @"c:\Users\THANH\OneDrive\Documents\POLICYXPOST\XPost\docs\Prompt_Tu_Van_Xuyen_Viet_Network.txt"
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    try
+                    {
+                        return await System.IO.File.ReadAllTextAsync(path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to read prompt file at {Path}", path);
+                    }
+                }
+            }
+            return null;
         }
     }
 }
